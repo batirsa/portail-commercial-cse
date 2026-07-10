@@ -358,8 +358,8 @@ textarea{resize:vertical;min-height:70px}
                 <option value="F2">F2 — 2 pièces 83 m²</option>
                 <option value="F3">F3 — 3 pièces 137 m²</option>
                 <option value="F4">F4 — 4 pièces 199 m²</option>
-                <option value="PH4">Penthouse — 4 pièces</option>
-                <option value="PH5">Penthouse — 5 pièces</option>
+                <option value="PH4">Penthouse — 4 pièces 300 m²</option>
+                <option value="PH5">Penthouse — 5 pièces 350 m²</option>
               </select>
             </div>
             <div class="form-group"><label>Nb pièces</label><input id="f_nbPieces" readonly></div>
@@ -861,7 +861,7 @@ textarea{resize:vertical;min-height:70px}
 // Serveur déployé sur Railway (accessible depuis n'importe où, San-Pédro comme Abidjan).
 const API_BASE = 'https://cse-batir-sa-server-production.up.railway.app/api';
 const TOKEN_KEY = 'cse_auth_token';
-const TYPES = { F2:{nb:'2',surface:'83',prix:45000000}, F3:{nb:'3',surface:'137',prix:75000000}, F4:{nb:'4',surface:'199',prix:100000000}, PH4:{nb:'4',surface:'',prix:0}, PH5:{nb:'5',surface:'',prix:0} };
+const TYPES = { F2:{nb:'2',surface:'83',prix:45000000}, F3:{nb:'3',surface:'137',prix:75000000}, F4:{nb:'4',surface:'199',prix:100000000}, PH4:{nb:'4',surface:'300',prix:0}, PH5:{nb:'5',surface:'350',prix:0} };
 const VAGUES = { 1:{label:'1ère livraison',mois:24,color:'#1a7a4a',bg:'#e8f5ee'}, 2:{label:'2ème livraison',mois:36,color:'#00294d',bg:'#e8f0f7'}, 3:{label:'3ème livraison',mois:48,color:'#b8860b',bg:'#fff8e1'} };
 const FRAIS_DEF = 200000;
 
@@ -2738,8 +2738,8 @@ function buildPDF(c){
     F2: { titre: "DESCRIPTION D'UN APPARTEMENT DE 2 PIECES 83 M²", items: ['Un (01) Chambre autonome avec placard,','Un (01) séjour,','Une (01) cuisine moderne,','Deux (02) terrasses (balcon),','Une (01) WC visiteur','Un (01) Dressing'] },
     F3: { titre: "DESCRIPTION D'UN APPARTEMENT DE 3 PIECES 137 M²", items: ['Deux (02) chambres autonomes avec placard chacune,','Un (01) séjour,','Une (01) cuisine moderne,','Trois (03) terrasses (balcon),','Une (01) WC visiteur','Un (01) Buanderie'] },
     F4: { titre: "DESCRIPTION D'UN APPARTEMENT DE 4 PIECES 199 M²", items: ['Trois (03) chambres autonomes avec placard chacune,','Un (01) séjour,','Une (01) cuisine moderne,','Trois (03) terrasses (balcon),','Une (01) WC visiteur','Un (01) Buanderie'] },
-    PH4: { titre: "DESCRIPTION D'UN PENTHOUSE DE 4 PIECES", items: ['Quatre (04) chambres autonomes avec placard/dressing chacune,','Un (01) grand séjour,','Une (01) cuisine moderne,','Une (01) buanderie,','Une (01) WC visiteur','De vastes terrasses privatives'] },
-    PH5: { titre: "DESCRIPTION D'UN PENTHOUSE DE 5 PIECES", items: ['Cinq (05) chambres autonomes avec placard/dressing chacune,','Un (01) grand séjour,','Une (01) cuisine moderne,','Une (01) buanderie,','Une (01) WC visiteur','De vastes terrasses privatives'] },
+    PH4: { titre: "DESCRIPTION D'UN PENTHOUSE DE 4 PIECES 300 M²", items: ['Trois (03) chambres autonomes avec placard chacune,','Un (01) séjour,','Une (01) cuisine moderne,','Trois (03) terrasses (balcon),','Une (01) WC visiteur','Un (01) Buanderie'] },
+    PH5: { titre: "DESCRIPTION D'UN PENTHOUSE DE 5 PIECES 350 M²", items: ['Quatre (04) chambres autonomes avec placard chacune,','Un (01) séjour,','Une (01) cuisine moderne,','Trois (03) terrasses (balcon),','Une (01) WC visiteur','Un (01) Buanderie'] },
   };
   const descType = DESCRIPTIONS_TYPE[c.type] || null;
 
