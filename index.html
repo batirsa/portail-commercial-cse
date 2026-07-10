@@ -2767,7 +2767,13 @@ function buildPDF(c){
       ${DESCRIPTIONS_TYPE.F3.items.map(t=>`<div class="tiret">${t}</div>`).join('')}
       <h2 style="margin-top:18px">ARTICLE 4 : DESCRIPTION D'UN APPARTEMENT DE 4 PIECES 199 M²</h2>
       <p>Les appartements de types F4 sont composés de :</p>
-      ${DESCRIPTIONS_TYPE.F4.items.map(t=>`<div class="tiret">${t}</div>`).join('')}`}
+      ${DESCRIPTIONS_TYPE.F4.items.map(t=>`<div class="tiret">${t}</div>`).join('')}
+      <h2 style="margin-top:18px">ARTICLE 5 : ${DESCRIPTIONS_TYPE.PH4.titre}</h2>
+      <p>Les appartements de types penthouse sont composés de :</p>
+      ${DESCRIPTIONS_TYPE.PH4.items.map(t=>`<div class="tiret">${t}</div>`).join('')}
+      <h2 style="margin-top:18px">ARTICLE 6 : ${DESCRIPTIONS_TYPE.PH5.titre}</h2>
+      <p>Les appartements de types penthouse sont composés de :</p>
+      ${DESCRIPTIONS_TYPE.PH5.items.map(t=>`<div class="tiret">${t}</div>`).join('')}`}
     </div>
     ${footer()}
   </div>`;
@@ -2805,7 +2811,7 @@ function buildPDF(c){
   <div class="doc-page">
     ${header(dossier)}
     <div class="body">
-      <h2>ARTICLE 5 : IDENTIFICATION DU SOUSCRIPTEUR</h2>
+      <h2>ARTICLE 7 : IDENTIFICATION DU SOUSCRIPTEUR</h2>
       <h3>(A remplir complètement et lisiblement)</h3>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;padding:10px 0;border-bottom:2px solid #f36f00">
         <div style="font-size:10.5pt"><b>Nom du commercial (e) :</b> ${c.commercial||'—'}<br><b>Domiciliation Bancaire :</b> ${c.domiciliation||'—'}<br><b>Nom & contact du gestionnaire :</b> ${c.gestionnaire||'—'}</div>
@@ -2845,7 +2851,7 @@ function buildPDF(c){
   <div class="doc-page">
     ${header(dossier)}
     <div class="body">
-      <h2>ARTICLE 6 : CONDITION D'ADHESION</h2>
+      <h2>ARTICLE 8 : CONDITION D'ADHESION</h2>
       <p style="font-size:11pt"><strong>M./Mme/Mlle :</strong> ${c.nom} &nbsp;·&nbsp; <em>${c.tel||''} ${c.email?'· '+c.email:''}</em></p>
       <div class="adhesion-box">
         <b>Bâtiment :</b> ${c.lot||'…'} &nbsp; <b>Nombre de pièces :</b> ${inf.nb} &nbsp; <b>N° étage :</b> ${c.etage||'…'} &nbsp; <b>Surface :</b> ${inf.surface} M²<br>
@@ -2880,7 +2886,7 @@ function buildPDF(c){
   <div class="doc-page">
     ${header(dossier)}
     <div class="body">
-      <h2>ARTICLE 7 : MODALITES DE PAIEMENT</h2>
+      <h2>ARTICLE 9 : MODALITES DE PAIEMENT</h2>
       <p><strong>Echéancier de paiement :</strong> (Veuillez préciser le montant & la période des Versements)</p>
       <table class="echeancier-table">
         <thead><tr><th style="width:70px;text-align:center">Versement</th><th>Montant</th><th>Date</th></tr></thead>
@@ -2894,7 +2900,7 @@ function buildPDF(c){
           ${c.optionFinition==='Domotique'?checkedBox:emptyBox} Domotique &nbsp;&nbsp;
           ${c.optionFinition==='Electroménager'?checkedBox:emptyBox} Electroménager</div>
       </div>
-      <h2>ARTICLE 8 : MODALITES DE FINITIONS</h2>
+      <h2>ARTICLE 10 : MODALITES DE FINITIONS</h2>
       <table class="finitions-table">
         <thead><tr><th style="width:36px;text-align:center">N°</th><th style="width:28%">DESIGNATION</th><th>TRAVAUX A REALISER</th></tr></thead>
         <tbody>
@@ -2922,10 +2928,10 @@ function buildPDF(c){
   <div class="doc-page">
     ${header(dossier)}
     <div class="body">
-      <h2>ARTICLE 9 : DELAI D'EXECUTION & DE LIVRAISON</h2>
+      <h2>ARTICLE 11 : DELAI D'EXECUTION & DE LIVRAISON</h2>
       <p>Les travaux de réalisation de l'ensemble immobilier entrepris s'effectueront sauf cas de force majeur, sur une durée de deux (02) ans à compter de janvier 2026.</p>
       <p>Les livraisons des appartements interviendront au stade de finition totale, dans le second trimestre suivant le paiement complet du prix de vente du bien immobilier et du prix des travaux supplémentaires s'il y'a lieu.</p>
-      <h2>ARTICLE 10 : OBLIGATIONS DE L'ACQUEREUR</h2>
+      <h2>ARTICLE 12 : OBLIGATIONS DE L'ACQUEREUR</h2>
       <p>L'acquéreur s'engage à :</p>
       <div class="check">Respecter le calendrier de paiement convenu ;</div>
       <div class="check">Utiliser le logement conformément à sa destination, toute modifications étant interdite ;</div>
@@ -2935,27 +2941,27 @@ function buildPDF(c){
       <div class="check">Veiller à la tranquillité du voisinage en s'interdisant les nuisances sonores ;</div>
       <div class="check">S'interdit de mener des activités commerciales (sauf professions libérales à titre mixte pour l'habitation) ;</div>
       <div class="check">Respecter la gestion des déchets et des règles d'hygiène qui sera mises en place.</div>
-      <h2>ARTICLE 11 : OBLIGATIONS DU PROMOTEUR</h2>
+      <h2>ARTICLE 13 : OBLIGATIONS DU PROMOTEUR</h2>
       <p>Le promoteur s'engage à :</p>
       <div class="check">Livrer les appartements dans les délais convenus ;</div>
       <div class="check">Construire les logements conformément aux normes de construction (sécurité, électricité, eau, assainissement) ;</div>
       <div class="check">Assurer la garantie décennale afférente à la solidité de l'ouvrage.</div>
-      <h2>ARTICLE 12 : ESTHETIQUE</h2>
+      <h2>ARTICLE 14 : ESTHETIQUE</h2>
       <p>Les constructions à réaliser par le promoteur sont conformes aux plans établis à cet effet. Leur réalisation et organisation respectent une harmonie voulue par ce dernier, et cette esthétique générale devra être toujours maintenue. Il ne pourra être fait aucune adjonction de bâtiments susceptible de nuire à l'esthétique et à la bonne tenue de l'ensemble.</p>
       <p>Il est particulièrement interdit d'édifier des constructions provisoires ou de caractère précaire et de modifier les façades des appartements.</p>
-      <h2>ARTICLE 13 : CARACTÈRE DE L'OCCUPATION</h2>
+      <h2>ARTICLE 15 : CARACTÈRE DE L'OCCUPATION</h2>
       <p>Les propriétaires et occupants devront veiller à ce que la tranquillité du groupe d'habitations ne soit à aucun moment troublé par leur fait, celui des personnes de leur famille ou de leurs invités. Ils ne pourront faire ou laisser faire aucun bruit anormal, aucun travail avec ou sans machine ou outil de quelque genre que ce soit ou jeux, de nature à nuire ou à gêner leurs voisins par le bruit, l'odeur, les fumées, les trépidations, les parasites électriques ou autres.</p>
-      <h2>ARTICLE 14 : PROPRIÉTÉ DU SOL, DE LA VOIRIE ET DES ÉQUIPEMENTS</h2>
+      <h2>ARTICLE 16 : PROPRIÉTÉ DU SOL, DE LA VOIRIE ET DES ÉQUIPEMENTS</h2>
       <p>Les propriétaires des lots ou leur(s) ayant(s) droit, pourront jouir de tout droit d'usus, de raccordement aux réseaux de viabilité établis sur les voies et réseaux divers comme sur une voie publique. Ces voies et équipements se présentent comme suit :</p>
       <p style="margin-left:20px"><strong>1-</strong> Les voies, les espaces verts, les parkings, l'éclairage public, les trottoirs ;</p>
       <p style="margin-left:20px"><strong>2-</strong> Les réseaux de distribution d'eau, d'électricité et de téléphone.</p>
-      <h2>ARTICLE 15 : ENTRETIEN DES VOIES ET DE LEURS DÉPENDANCES</h2>
+      <h2>ARTICLE 17 : ENTRETIEN DES VOIES ET DE LEURS DÉPENDANCES</h2>
       <p>Les acquéreurs des lots (y compris les logements) contribueront conjointement, chacun dans la proportion de la surface de son terrain, aux charges diverses d'entretien de la voirie. Les acquéreurs devront prendre part à l'association syndicale qui sera créée.</p>
-      <h2>ARTICLE 16 : MODIFICATION DES PARTIES PRIVÉES</h2>
+      <h2>ARTICLE 18 : MODIFICATION DES PARTIES PRIVÉES</h2>
       <p>Toutes les parties privées qui contribuent à l'harmonie du groupe d'habitations, même leur peinture, ne pourront être modifiées sans le consentement préalable et écrit de l'association syndicale, à la majorité des voix des syndicataires.</p>
-      <h2>ARTICLE 17 : DESISTEMENT</h2>
+      <h2>ARTICLE 19 : DESISTEMENT</h2>
       <p>En cas de désistement une indemnité correspondant à <strong>5% du coût du logement</strong>, est prélevée sur les sommes versées par le souscripteur au titre d'indemnité d'immobilisation. Toutefois, BATIR-SA s'engage à exonérer le souscripteur du prélèvement de l'indemnité d'immobilisation dans le cas où celui-ci se fait subroger dans ses droits par un nouvel acquéreur dans un délai de trente (30) jours à compter de la date du désistement.</p>
-      <h2>ARTICLE 18 : DISPOSITIONS FINALES</h2>
+      <h2>ARTICLE 20 : DISPOSITIONS FINALES</h2>
       <p>Les conditions générales ainsi définies font partie intégrante du contrat de réservation qui sera signés par les parties. Ce document constitue un accord entre le souscripteur et le promoteur. En le signant, le souscripteur confirme avoir pris connaissance des conditions et s'engage à les respecter.</p>
       <p>Un cahier des charges spécifique déterminant les règles et servitude de la copropriété sera établi et remis à chaque acquéreur au moment de la signature de l'acte de vente auprès du notaire.</p>
       <div class="sig-grid">
