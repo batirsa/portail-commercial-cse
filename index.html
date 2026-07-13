@@ -559,13 +559,33 @@ textarea{resize:vertical;min-height:70px}
 
 <!-- ══ ADMINISTRATION DES COMPTES ══ -->
 <div class="page" id="page-admin">
-  <div class="card">
+  <div class="card" style="margin-bottom:16px">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
       <div class="card-title">🔐 Comptes utilisateurs</div>
       <button class="btn btn-navy btn-sm" onclick="openUserModal()">➕ Nouveau compte</button>
     </div>
     <div class="card-body" style="padding:0">
       <div class="table-wrap"><table id="tUsers"></table></div>
+    </div>
+  </div>
+
+  <div class="card" style="border:2px solid var(--danger)">
+    <div class="card-header" style="background:#fceaea">
+      <div class="card-title" style="color:var(--danger)">⚠️ Zone dangereuse — Réinitialisation complète</div>
+    </div>
+    <div class="card-body">
+      <p style="font-size:13px;line-height:1.6;margin-bottom:14px">
+        Cette action <strong>supprime définitivement tous les dossiers clients et tous les paiements/versements</strong>,
+        et remet <strong>chaque appartement du stock à "Disponible"</strong> (îlots, bâtiments, types et prix restent inchangés).
+        Les comptes utilisateurs ne sont pas touchés.<br>
+        <strong style="color:var(--danger)">Cette action est irréversible.</strong> À utiliser uniquement pour repartir à zéro
+        (fin de phase de tests, nettoyage de données historiques non fiables...).
+      </p>
+      <div class="form-group" style="max-width:360px;margin-bottom:12px">
+        <label>Tape <strong>REINITIALISER</strong> pour confirmer</label>
+        <input id="resetConfirmInput" placeholder="REINITIALISER" oninput="document.getElementById('btnReset').disabled = this.value.trim()!=='REINITIALISER'">
+      </div>
+      <button class="btn btn-danger" id="btnReset" disabled onclick="lancerReinitialisation()">🗑️ Tout réinitialiser</button>
     </div>
   </div>
 </div>
@@ -1175,13 +1195,30 @@ function renderStockAdmin(){
     t.innerHTML = '<tbody><tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun appartement pour ces critères.</td></tr></tbody>';
     return;
   }
-  t.innerHTML = '<thead><tr><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix</th><th>Statut</th><th>Dossier lié</th></tr></thead><tbody>' +
+  t.innerHTML = '<thead><tr><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix</th><th>Statut</th><th>Dossier lié</th><th>Actions</th></tr></thead><tbody>' +
     list.map(a=>`<tr>
       <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage||'—'}</td><td><strong>${a.appt}</strong></td>
       <td><span class="badge badge-gold">${a.type}</span></td><td>${a.superf} m²</td><td style="font-size:12px">${fmt(a.prix)} F</td>
       <td>${statutBadge(a.statut)}</td>
-      <td style="font-size:12px">${a.dossier?a.dossier+' — '+(a.nom||''):'—'}</td>
+      <td style="font-size:12px">${a.dossier ? (DATA.clients.some(c=>c.dossier===a.dossier) ? a.dossier+' — '+(a.nom||'') : '<span style="color:var(--danger)">⚠️ '+a.dossier+' — '+(a.nom||'')+' (dossier introuvable)</span>') : '—'}</td>
+      <td>${a.statut!=='DISPONIBLE' ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="libererAppt(${a.id})">🔓 Libérer</button>` : ''}</td>
     </tr>`).join('') + '</tbody>';
+}
+
+async function libererAppt(id){
+  const appt = STOCK_ADMIN.find(a=>a.id===id);
+  if(!appt) return;
+  const msg = appt.dossier
+    ? `Libérer l'appartement ${appt.appt} (îlot ${appt.ilot}) ? Il est actuellement lié au dossier ${appt.dossier}${appt.nom?' ('+appt.nom+')':''}.\n\nÀ utiliser uniquement si ce dossier n'existe plus / a été supprimé autrement, ou si l'attribution est une erreur historique.`
+    : `Libérer l'appartement ${appt.appt} (îlot ${appt.ilot}) et le remettre disponible ?`;
+  if(!confirm(msg)) return;
+  try{
+    await apiFetch('/stock/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ statut:'DISPONIBLE', dossier:'', nom:'' }) });
+    toast(`✅ Appartement ${appt.appt} remis disponible.`,'success');
+    chargerStockAdmin();
+  }catch(e){
+    toast(e.message || 'Erreur lors de la libération.', 'danger');
+  }
 }
 
 function stockTypeChange(){
@@ -1939,6 +1976,29 @@ async function toggleUserActive(username, makeActive){
     renderAdmin();
   }catch(e){
     toast(e.message || 'Erreur.', 'danger');
+  }
+}
+
+async function lancerReinitialisation(){
+  const val = document.getElementById('resetConfirmInput').value.trim();
+  if(val !== 'REINITIALISER'){ toast('Confirmation incorrecte.','danger'); return; }
+  if(!confirm('Dernière confirmation : supprimer TOUS les clients, TOUS les versements, et remettre TOUT le stock à disponible ?\n\nCette action est IRRÉVERSIBLE.')) return;
+
+  const btn = document.getElementById('btnReset');
+  btn.disabled = true; btn.textContent = '⏳ Réinitialisation en cours...';
+  try{
+    const res = await apiFetch('/admin/reset-operationnel', { method:'POST', body: JSON.stringify({ confirmation: val }) });
+    toast(`✅ Réinitialisé : ${res.clientsSupprimes} client(s), ${res.paiementsSupprimes} paiement(s) supprimés, ${res.appartementsLiberes} appartement(s) libéré(s).`, 'success');
+    document.getElementById('resetConfirmInput').value = '';
+    // Recharge les données affichées dans l'app pour refléter l'état vidé.
+    await chargerClients();
+    renderDashboard();
+    if(document.getElementById('page-stock').classList.contains('active')) chargerStockAdmin();
+  }catch(e){
+    toast(e.message || 'Erreur lors de la réinitialisation.', 'danger');
+  }finally{
+    btn.textContent = '🗑️ Tout réinitialiser';
+    btn.disabled = true;
   }
 }
 
