@@ -215,6 +215,7 @@ textarea{resize:vertical;min-height:70px}
   <button class="nav-tab" onclick="goTab('liste',this)">👥 Clients</button>
   <button class="nav-tab" onclick="goTab('nouveau',this)">➕ Nouveau client</button>
   <button class="nav-tab" onclick="goTab('prospection',this)">📅 Prospection</button>
+  <button class="nav-tab" id="navLeads" onclick="goTab('leads',this)" style="display:none">📢 Leads pub <span id="leadsBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
   <button class="nav-tab" id="navStock" onclick="goTab('stock',this)" style="display:none">🏢 Stock</button>
   <button class="nav-tab" id="navAdmin" onclick="goTab('admin',this)" style="display:none">🔐 Administration</button>
 </div>
@@ -558,6 +559,36 @@ textarea{resize:vertical;min-height:70px}
   </div>
 </div>
 
+<!-- ══ LEADS PUB (Chef d'Agence / Admin uniquement) ══ -->
+<div class="page" id="page-leads">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div class="card-title">📢 Leads publicitaires</div>
+      <span id="leadsCount" style="font-size:12px;color:var(--gray)"></span>
+    </div>
+    <div class="card-body" style="padding:16px 24px 0">
+      <div class="toolbar">
+        <select class="filter-sel" id="lead_filtreStatut" onchange="renderLeads()">
+          <option value="">Tous statuts</option>
+          <option>Nouveau</option>
+          <option>Assigné</option>
+          <option>Contacté</option>
+          <option>Converti</option>
+          <option>Perdu</option>
+        </select>
+        <select class="filter-sel" id="lead_filtreAssigne" onchange="renderLeads()">
+          <option value="">Tous (assignés ou non)</option>
+          <option value="__non_assigne__">Non assignés</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="chargerLeads()">🔄 Actualiser</button>
+      </div>
+    </div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table id="tLeads"></table></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ADMINISTRATION DES COMPTES ══ -->
 <div class="page" id="page-admin">
   <div class="card" style="margin-bottom:16px">
@@ -821,6 +852,7 @@ textarea{resize:vertical;min-height:70px}
           <option value="dir_commercial">Directeur Commercial</option>
           <option value="agent_recouvrement">Agent Recouvrement</option>
           <option value="recouv">Directrice Recouvrement (lecture seule)</option>
+          <option value="chef_agence">Chef d'Agence</option>
           <option value="admin">Administrateur</option>
         </select>
       </div>
@@ -1069,13 +1101,15 @@ async function autoRefreshTick(){
   const id = pageActive ? pageActive.id.replace('page-','') : null;
   if(id==='dashboard') renderDashboard();
   else if(id==='liste') renderListe();
+  else if(id==='leads') chargerLeads(true);
   // "nouveau" et "admin" ne sont pas redessinés automatiquement (saisie en cours / gestion des comptes)
+  if(['chef_agence','admin'].includes(currentUser?.role)) rafraichirBadgeLeads();
 }
 
 function renderSessionBadge(){
   const el = document.getElementById('sessionBadge');
   if(!el || !currentUser) return;
-  const roleLabel = currentUser.titre || { commercial:'Commercial', dir_commercial:'Directeur Commercial', admin:'Administrateur' }[currentUser.role] || currentUser.role;
+  const roleLabel = currentUser.titre || { commercial:'Commercial', dir_commercial:'Directeur Commercial', agent_recouvrement:'Agent Recouvrement', recouv:'Directrice Recouvrement', chef_agence:"Chef d'Agence", admin:'Administrateur' }[currentUser.role] || currentUser.role;
   el.innerHTML = `<span>👤 <b>${currentUser.fullName||currentUser.username}</b> · ${roleLabel}</span><button onclick="logout()">Déconnexion</button>`;
   const toggle = document.getElementById('scopeToggle');
   if(toggle){
@@ -1091,6 +1125,10 @@ function renderSessionBadge(){
   if(navAdmin) navAdmin.style.display = (currentUser.role === 'admin') ? '' : 'none';
   const navStock = document.getElementById('navStock');
   if(navStock) navStock.style.display = (['dir_commercial','admin'].includes(currentUser.role)) ? '' : 'none';
+  const navLeads = document.getElementById('navLeads');
+  const peutGererLeads = ['chef_agence','admin'].includes(currentUser.role);
+  if(navLeads) navLeads.style.display = peutGererLeads ? '' : 'none';
+  if(peutGererLeads) rafraichirBadgeLeads();
 }
 
 // Charge les clients depuis le serveur selon la portée choisie (own/team).
@@ -1155,6 +1193,7 @@ function goTab(id, btn){
   if(id==='admin') renderAdmin();
   if(id==='prospection') initProspection();
   if(id==='stock') chargerStockAdmin();
+  if(id==='leads') chargerLeads();
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1862,8 +1901,132 @@ const ROLE_LABELS = {
   dir_commercial: 'Directeur Commercial',
   agent_recouvrement: 'Agent Recouvrement',
   recouv: 'Directrice Recouvrement',
+  chef_agence: "Chef d'Agence",
   admin: 'Administrateur',
 };
+
+// ─────────────────────────────────────────────────────────────────
+// LEADS PUB (Chef d'Agence / Admin) — réception et dispatching des
+// prospects captés via les formulaires de campagnes Facebook/LinkedIn.
+// ─────────────────────────────────────────────────────────────────
+let DATA_LEADS = [];
+let DATA_COMMERCIAUX = []; // liste des comptes "commercial" actifs, pour la liste déroulante d'assignation
+
+const LEAD_STATUT_STYLE = {
+  'Nouveau':   { bg:'#fceaea', color:'#a32d2d' },
+  'Assigné':   { bg:'#fff8e1', color:'#7a5000' },
+  'Contacté':  { bg:'#e8f0f7', color:'#00294d' },
+  'Converti':  { bg:'#e8f5ee', color:'#1a7a4a' },
+  'Perdu':     { bg:'#f1f3f5', color:'#666' },
+};
+
+async function rafraichirBadgeLeads(){
+  const badge = document.getElementById('leadsBadge');
+  if(!badge || !currentUser || !['chef_agence','admin'].includes(currentUser.role)) return;
+  try{
+    const data = await apiFetch('/leads');
+    const nouveaux = (data.leads||[]).filter(l=>l.statut==='Nouveau').length;
+    if(nouveaux > 0){ badge.textContent = nouveaux; badge.style.display = 'inline-block'; }
+    else { badge.style.display = 'none'; }
+  }catch(e){ /* silencieux — pas grave si le badge ne se met pas à jour */ }
+}
+
+async function chargerLeads(silencieux){
+  const tbl = document.getElementById('tLeads');
+  if(!silencieux && tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement...</td></tr>`;
+  try{
+    const [dataLeads, dataUsers] = await Promise.all([
+      apiFetch('/leads'),
+      DATA_COMMERCIAUX.length ? Promise.resolve({users:DATA_COMMERCIAUX}) : apiFetch('/users'),
+    ]);
+    DATA_LEADS = dataLeads.leads || [];
+    if(!DATA_COMMERCIAUX.length){
+      DATA_COMMERCIAUX = (dataUsers.users||[]).filter(u=>u.role==='commercial' && u.active!==false);
+    }
+  }catch(e){
+    if(tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
+    return;
+  }
+  renderLeads();
+  rafraichirBadgeLeads();
+}
+
+function renderLeads(){
+  const tbl = document.getElementById('tLeads');
+  if(!tbl) return;
+  const fStatut = document.getElementById('lead_filtreStatut').value;
+  const fAssigne = document.getElementById('lead_filtreAssigne').value;
+
+  let list = DATA_LEADS.slice();
+  if(fStatut) list = list.filter(l=>l.statut===fStatut);
+  if(fAssigne==='__non_assigne__') list = list.filter(l=>!l.assigneA);
+
+  document.getElementById('leadsCount').textContent = `${list.length} / ${DATA_LEADS.length} lead(s)`;
+
+  if(list.length===0){
+    tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun lead pour ce filtre.</td></tr>`;
+    return;
+  }
+
+  const optsCommerciaux = (leadId, assigneActuel) => `
+    <option value="">— Choisir —</option>
+    ${DATA_COMMERCIAUX.map(c=>`<option value="${c.username}" ${c.username===assigneActuel?'selected':''}>${c.fullName}</option>`).join('')}
+  `;
+
+  tbl.innerHTML = `
+    <thead><tr>
+      <th>Reçu le</th><th>Nom</th><th>Contact</th><th>Intérêt</th><th>Type / Budget</th><th>Statut</th><th style="width:190px">Assigné à</th><th style="width:90px">Actions</th>
+    </tr></thead>
+    <tbody>
+      ${list.map(l=>{
+        const st = LEAD_STATUT_STYLE[l.statut] || LEAD_STATUT_STYLE['Nouveau'];
+        const dateRecu = l.createdAt ? new Date(l.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
+        return `
+        <tr>
+          <td style="font-size:11.5px;color:var(--gray);white-space:nowrap">${dateRecu}</td>
+          <td><strong>${l.nom}</strong>${l.profession?`<div style="font-size:11px;color:var(--gray)">${l.profession}${l.employeur?' · '+l.employeur:''}</div>`:''}</td>
+          <td style="font-size:12.5px">📞 ${l.contact||'—'}${l.whatsapp?`<br>💬 ${l.whatsapp}`:''}</td>
+          <td>${l.interesse==='oui' ? '<span class="badge badge-success">✓ Intéressé</span>' : '<span class="badge badge-gray">Non précisé</span>'}</td>
+          <td style="font-size:12px">${(l.typesLogement||[]).join(', ')||'—'}${l.budget?`<br><span style="color:var(--gray)">${l.budget}</span>`:''}</td>
+          <td><span class="badge" style="background:${st.bg};color:${st.color}">${l.statut}</span></td>
+          <td>
+            <select class="filter-sel" style="width:100%;font-size:12px;padding:6px 8px" onchange="assignerLead('${l.id}', this.value)">
+              ${optsCommerciaux(l.id, l.assigneA)}
+            </select>
+          </td>
+          <td>
+            <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="supprimerLead('${l.id}')">🗑</button>
+          </td>
+        </tr>`;
+      }).join('')}
+    </tbody>`;
+}
+
+async function assignerLead(id, username){
+  const commercial = DATA_COMMERCIAUX.find(c=>c.username===username);
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), {
+      method:'PUT',
+      body: JSON.stringify({ assigneA: username || null, assigneNom: commercial ? commercial.fullName : null })
+    });
+    toast(commercial ? `Lead assigné à ${commercial.fullName}.` : 'Assignation retirée.', 'success');
+    chargerLeads(true);
+  }catch(e){
+    toast(e.message || "Erreur lors de l'assignation.", 'danger');
+    renderLeads(); // revert visuel du <select>
+  }
+}
+
+async function supprimerLead(id){
+  if(!confirm('Supprimer définitivement ce lead ?')) return;
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'DELETE' });
+    toast('Lead supprimé.', 'success');
+    chargerLeads(true);
+  }catch(e){
+    toast(e.message || 'Erreur lors de la suppression.', 'danger');
+  }
+}
 
 async function renderAdmin(){
   const tbl = document.getElementById('tUsers');
