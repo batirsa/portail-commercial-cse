@@ -1037,7 +1037,7 @@ async function doLogin(){
     authToken = data.token;
     currentUser = data.user;
     localStorage.setItem(TOKEN_KEY, authToken);
-    if(!['commercial','dir_commercial','admin'].includes(currentUser.role)){
+    if(!['commercial','dir_commercial','chef_agence','admin'].includes(currentUser.role)){
       throw new Error("Ce compte n'a pas accès au portail de souscription.");
     }
     teamScope = (currentUser.role === 'commercial') ? 'own' : 'team';
@@ -1069,7 +1069,7 @@ async function initApp(){
   try{
     const data = await apiFetch('/auth/me');
     currentUser = data.user;
-    if(!['commercial','dir_commercial','admin'].includes(currentUser.role)){
+    if(!['commercial','dir_commercial','chef_agence','admin'].includes(currentUser.role)){
       throw new Error('Rôle non autorisé');
     }
     teamScope = (currentUser.role === 'commercial') ? 'own' : 'team';
