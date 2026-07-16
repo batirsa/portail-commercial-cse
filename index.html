@@ -1141,9 +1141,9 @@ function renderSessionBadge(){
     }
   }
   const navAdmin = document.getElementById('navAdmin');
-  if(navAdmin) navAdmin.style.display = (currentUser.role === 'admin') ? '' : 'none';
+  if(navAdmin) navAdmin.style.display = (['chef_agence','admin'].includes(currentUser.role)) ? '' : 'none';
   const navStock = document.getElementById('navStock');
-  if(navStock) navStock.style.display = (['dir_commercial','admin'].includes(currentUser.role)) ? '' : 'none';
+  if(navStock) navStock.style.display = (['dir_commercial','chef_agence','admin'].includes(currentUser.role)) ? '' : 'none';
   const navLeads = document.getElementById('navLeads');
   const peutGererLeads = ['chef_agence','admin'].includes(currentUser.role);
   if(navLeads) navLeads.style.display = peutGererLeads ? '' : 'none';
@@ -2305,7 +2305,7 @@ function ymd(d){ return d.toISOString().slice(0,10); }
 async function initProspection(){
   if(!_prospInit){
     document.getElementById('rapportDate').value = ymd(new Date());
-    if(['dir_commercial','admin'].includes(currentUser.role)){
+    if(['dir_commercial','chef_agence','admin'].includes(currentUser.role)){
       document.getElementById('prospTabEquipe').style.display = '';
     }
     _prospInit = true;
@@ -2502,7 +2502,7 @@ async function chargerResumeHebdo(){
   const dimanche = new Date(lundi); dimanche.setDate(dimanche.getDate()+6);
   document.getElementById('resumeSemaineLabel').textContent = fmtDateFr(lundi)+' → '+fmtDateFr(dimanche);
   const semaine = isoSemaine(lundi);
-  const isTeam = ['dir_commercial','admin'].includes(currentUser.role);
+  const isTeam = ['dir_commercial','chef_agence','admin'].includes(currentUser.role);
   const scope = isTeam ? 'team' : 'own';
   try{
     const [rapRes, planRes] = await Promise.all([
@@ -2569,7 +2569,7 @@ function renderResumeHebdo(rapports, planning){
 function kpiSmall(lbl,val,color){ return '<div class="kpi" style="border-color:'+color+'20;background:'+color+'10;min-width:100px"><div class="kn">'+lbl+'</div><div class="kv" style="font-size:16px;color:'+color+'">'+val+'</div></div>'; }
 
 async function chargerPromesses(){
-  const scope = ['dir_commercial','admin'].includes(currentUser.role) ? 'team' : 'own';
+  const scope = ['dir_commercial','chef_agence','admin'].includes(currentUser.role) ? 'team' : 'own';
   try{
     const data = await apiFetch('/prospection/rapports?scope='+scope);
     renderPromesses(data.rapports || []);
@@ -2600,7 +2600,7 @@ function renderPromesses(rapports){
     kpi('📅 Cette semaine', cetteSemaine, '#b8860b');
 
   const t = document.getElementById('tPromesses');
-  const isTeam = ['dir_commercial','admin'].includes(currentUser.role);
+  const isTeam = ['dir_commercial','chef_agence','admin'].includes(currentUser.role);
   if(!items.length){
     t.innerHTML = '<tbody><tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucune promesse de souscription enregistrée pour le moment.</td></tr></tbody>';
     return;
