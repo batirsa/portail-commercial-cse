@@ -199,8 +199,12 @@ textarea{resize:vertical;min-height:70px}
     <div class="topbar-sub">Des Références qui donnent de l'Assurance</div>
   </div>
   <div class="topbar-divider"></div>
-  <div class="topbar-title">📋 Souscription — Cité Sainte-Élisabeth</div>
+  <div class="topbar-title" id="topbarTitle">📋 Souscription — Cité Sainte-Élisabeth</div>
   <div class="topbar-right">
+    <select id="projetSwitcher" onchange="changerProjetActif(this.value)" style="display:none;padding:5px 8px;border-radius:6px;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;font-size:12px;font-weight:600">
+      <option value="CSE">🏢 Cité Sainte-Élisabeth</option>
+      <option value="COLOMBE3">🏢 Cité Colombe 3</option>
+    </select>
     <div class="session-badge" id="sessionBadge"></div>
     <button class="btn btn-outline btn-sm" onclick="chargerClients().then(()=>{renderDashboard();renderListe();})" title="Recharger les données depuis le serveur">🔄</button>
     <button class="btn btn-outline btn-sm" onclick="genererDossierVierge()" title="Fiche des conditions générales de souscription, vierge, à remettre à un prospect">📄 Fiche vierge</button>
@@ -215,8 +219,7 @@ textarea{resize:vertical;min-height:70px}
   <button class="nav-tab" onclick="goTab('liste',this)">👥 Clients</button>
   <button class="nav-tab" onclick="goTab('nouveau',this)">➕ Nouveau client</button>
   <button class="nav-tab" onclick="goTab('prospection',this)">📅 Prospection</button>
-  <button class="nav-tab" id="navLeads" onclick="goTab('leads',this)" style="display:none">📢 Leads pub <span id="leadsBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
-  <button class="nav-tab" id="navMesLeads" onclick="goTab('mesleads',this)" style="display:none">🎯 Mes leads <span id="mesLeadsBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
+  <button class="nav-tab" id="navLeads" onclick="goTab('leads',this)">📢 Leads pub <span id="leadsBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
   <button class="nav-tab" id="navStock" onclick="goTab('stock',this)" style="display:none">🏢 Stock</button>
   <button class="nav-tab" id="navAdmin" onclick="goTab('admin',this)" style="display:none">🔐 Administration</button>
 </div>
@@ -560,48 +563,30 @@ textarea{resize:vertical;min-height:70px}
   </div>
 </div>
 
-<!-- ══ LEADS PUB (Chef d'Agence / Admin uniquement) ══ -->
+<!-- ══ LEADS PUBLICITAIRES ══ -->
 <div class="page" id="page-leads">
-  <div class="card" style="margin-bottom:16px">
+  <div class="card">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div class="card-title">📢 Leads publicitaires</div>
-      <span id="leadsCount" style="font-size:12px;color:var(--gray)"></span>
+      <button class="btn btn-outline btn-sm" onclick="chargerLeads()" title="Recharger">🔄 Actualiser</button>
     </div>
-    <div class="card-body" style="padding:16px 24px 0">
-      <div class="toolbar">
-        <select class="filter-sel" id="lead_filtreStatut" onchange="renderLeads()">
+    <div class="card-body">
+      <p class="form-hint" style="margin-bottom:12px">Demandes reçues via le formulaire public lié à l'annonce sponsorisée. Prends en charge un lead pour le retirer de la file commune, puis fais évoluer son statut au fil de ton suivi.</p>
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <select id="lead_filtreStatut" class="filter-sel" onchange="renderLeads()">
           <option value="">Tous statuts</option>
-          <option>Nouveau</option>
-          <option>Assigné</option>
-          <option>Contacté</option>
-          <option>Converti</option>
-          <option>Perdu</option>
+          <option value="Nouveau">Nouveau</option>
+          <option value="Pris en charge">Pris en charge</option>
+          <option value="Contacté">Contacté</option>
+          <option value="Converti">Converti</option>
+          <option value="Perdu">Perdu</option>
         </select>
-        <select class="filter-sel" id="lead_filtreAssigne" onchange="renderLeads()">
-          <option value="">Tous (assignés ou non)</option>
-          <option value="__non_assigne__">Non assignés</option>
-        </select>
-        <button class="btn btn-outline btn-sm" onclick="chargerLeads()">🔄 Actualiser</button>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <input type="checkbox" id="lead_filtreMoi" style="width:auto" onchange="renderLeads()"> Seulement les miens
+        </label>
+        <span id="leadsCount" style="align-self:center;font-size:12px;color:var(--gray);margin-left:auto"></span>
       </div>
-    </div>
-    <div class="card-body" style="padding:0">
       <div class="table-wrap"><table id="tLeads"></table></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MES LEADS (Commercial uniquement — leads qui lui ont été assignés) ══ -->
-<div class="page" id="page-mesleads">
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <div class="card-title">🎯 Mes leads assignés</div>
-      <span id="mesLeadsCount" style="font-size:12px;color:var(--gray)"></span>
-    </div>
-    <div class="card-body" style="padding:16px 24px 0">
-      <div class="form-hint">Ces prospects vous ont été confiés par le Chef d'Agence suite à une annonce sponsorisée. Mettez à jour leur statut au fur et à mesure de vos échanges.</div>
-    </div>
-    <div class="card-body" style="padding:0">
-      <div class="table-wrap"><table id="tMesLeads"></table></div>
     </div>
   </div>
 </div>
@@ -869,7 +854,6 @@ textarea{resize:vertical;min-height:70px}
           <option value="dir_commercial">Directeur Commercial</option>
           <option value="agent_recouvrement">Agent Recouvrement</option>
           <option value="recouv">Directrice Recouvrement (lecture seule)</option>
-          <option value="chef_agence">Chef d'Agence</option>
           <option value="admin">Administrateur</option>
         </select>
       </div>
@@ -877,6 +861,14 @@ textarea{resize:vertical;min-height:70px}
         <label>Nom d'agent (affiché sur les dossiers) *</label>
         <input id="u_agentName" placeholder="ex: Koffi Jean">
         <div class="form-hint" style="margin-top:4px">Doit correspondre au nom utilisé dans les dossiers clients existants, si applicable.</div>
+      </div>
+      <div class="form-group full" id="u_projet_wrap" style="margin-bottom:12px">
+        <label>Projet rattaché *</label>
+        <select id="u_projet">
+          <option value="CSE">Cité Sainte-Élisabeth</option>
+          <option value="COLOMBE3">Cité Colombe 3</option>
+        </select>
+        <div class="form-hint" style="margin-top:4px">Ce compte ne verra et ne pourra gérer que le stock et les clients de ce projet.</div>
       </div>
       <div class="form-group full" style="margin-bottom:12px">
         <label>Titre / Fonction affiché (optionnel)</label>
@@ -943,7 +935,22 @@ textarea{resize:vertical;min-height:70px}
 // Serveur déployé sur Railway (accessible depuis n'importe où, San-Pédro comme Abidjan).
 const API_BASE = 'https://cse-batir-sa-server-production.up.railway.app/api';
 const TOKEN_KEY = 'cse_auth_token';
-const TYPES = { F2:{nb:'2',surface:'83',prix:45000000}, F3:{nb:'3',surface:'137',prix:75000000}, F4:{nb:'4',surface:'199',prix:100000000}, PH4:{nb:'4',surface:'300',prix:0}, PH5:{nb:'5',surface:'350',prix:0} };
+const PROJET_KEY = 'cse_projet_actif'; // mémorise le projet choisi par un compte multi-projets (admin)
+const TYPES = {
+  // Cité Sainte-Élisabeth (CSE)
+  F2:{nb:'2',surface:'83',prix:45000000}, F3:{nb:'3',surface:'137',prix:75000000}, F4:{nb:'4',surface:'199',prix:100000000},
+  PH4:{nb:'4',surface:'300',prix:0}, PH5:{nb:'5',surface:'350',prix:0},
+  // Cité Colombe 3 (COLOMBE3)
+  'COL-F4':{nb:'4',surface:'132',prix:75000000}, 'COL-PH3':{nb:'3',surface:'200',prix:0}, 'COL-PH4':{nb:'4',surface:'250',prix:0},
+};
+// Types d'appartements proposés selon le projet actif — sert à filtrer les
+// sélecteurs (nouveau client, ajout au stock) pour ne montrer que ce qui existe
+// réellement dans le projet en cours.
+const TYPES_PAR_PROJET = {
+  CSE: ['F2','F3','F4','PH4','PH5'],
+  COLOMBE3: ['COL-F4','COL-PH3','COL-PH4'],
+};
+const NOMS_PROJET = { CSE: 'Cité Sainte-Élisabeth', COLOMBE3: 'Cité Colombe 3' };
 const VAGUES = { 1:{label:'1ère livraison',mois:24,color:'#1a7a4a',bg:'#e8f5ee'}, 2:{label:'2ème livraison',mois:36,color:'#00294d',bg:'#e8f0f7'}, 3:{label:'3ème livraison',mois:48,color:'#b8860b',bg:'#fff8e1'} };
 const FRAIS_DEF = 200000;
 
@@ -967,8 +974,9 @@ const FICHES_TECHNIQUES = {
 
 let DATA = { clients:[] };
 let authToken = null;
-let currentUser = null; // { username, role, fullName, agentName }
+let currentUser = null; // { username, role, fullName, agentName, projet }
 let teamScope = 'own'; // 'own' | 'team' — utilisé par dir_commercial / admin
+let currentProjet = 'CSE'; // 'CSE' | 'COLOMBE3' — projet actif affiché à l'écran
 let _editId = null;
 let _pieceIdData = null; // { name, type, data(base64) } de la pièce d'identité en cours de saisie
 
@@ -1054,10 +1062,11 @@ async function doLogin(){
     authToken = data.token;
     currentUser = data.user;
     localStorage.setItem(TOKEN_KEY, authToken);
-    if(!['commercial','dir_commercial','chef_agence','admin'].includes(currentUser.role)){
+    if(!['commercial','dir_commercial','admin'].includes(currentUser.role)){
       throw new Error("Ce compte n'a pas accès au portail de souscription.");
     }
     teamScope = (currentUser.role === 'commercial') ? 'own' : 'team';
+    currentProjet = currentUser.projet || localStorage.getItem(PROJET_KEY) || 'CSE';
     await startApp();
   }catch(e){
     authToken = null; currentUser = null;
@@ -1086,10 +1095,11 @@ async function initApp(){
   try{
     const data = await apiFetch('/auth/me');
     currentUser = data.user;
-    if(!['commercial','dir_commercial','chef_agence','admin'].includes(currentUser.role)){
+    if(!['commercial','dir_commercial','admin'].includes(currentUser.role)){
       throw new Error('Rôle non autorisé');
     }
     teamScope = (currentUser.role === 'commercial') ? 'own' : 'team';
+    currentProjet = currentUser.projet || localStorage.getItem(PROJET_KEY) || 'CSE';
     await startApp();
   }catch(e){
     logout();
@@ -1099,9 +1109,11 @@ async function initApp(){
 async function startApp(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appRoot').style.display = 'block';
+  initProjetSwitcher();
   renderSessionBadge();
   await chargerClients();
   renderDashboard();
+  chargerLeads();
   // Rafraîchissement automatique en arrière-plan (toutes les 45s), pour que les
   // changements faits par le recouvrement (statut de paiement) ou par d'autres
   // commerciaux (en vue équipe) apparaissent sans avoir à cliquer sur 🔄 ni se reconnecter.
@@ -1109,26 +1121,83 @@ async function startApp(){
   _autoRefreshTimer = setInterval(autoRefreshTick, 45000);
 }
 
+// Le sélecteur de projet n'est visible QUE pour un compte "tous projets"
+// (currentUser.projet vide — typiquement admin). Un compte rattaché à un
+// projet précis (Ezebio sur CSE, Marie sur Colombe 3...) ne le voit jamais —
+// il reste dans son projet, imposé aussi côté serveur de toute façon.
+function initProjetSwitcher(){
+  const sel = document.getElementById('projetSwitcher');
+  if(currentUser.projet){
+    sel.style.display = 'none';
+    currentProjet = currentUser.projet;
+  } else {
+    sel.style.display = 'inline-block';
+    sel.value = currentProjet;
+  }
+  document.getElementById('topbarTitle').textContent = '📋 Souscription — ' + NOMS_PROJET[currentProjet];
+  remplirSelectsTypes();
+}
+
+// Construit un libellé lisible pour un code de type d'appartement, à partir
+// des infos déjà connues dans TYPES (nombre de pièces, surface).
+function libelleType(code){
+  const info = TYPES[code] || {};
+  const estPenthouse = code.indexOf('PH') !== -1;
+  const nomBase = estPenthouse ? 'Penthouse' : code.replace('COL-','');
+  return `${nomBase} — ${info.nb||'?'} pièces${info.surface?' '+info.surface+' m²':''}`;
+}
+
+// Régénère les listes déroulantes de type d'appartement (nouveau client, ajout
+// au stock, filtre du stock) pour ne proposer que les types qui existent
+// réellement dans le projet actuellement actif.
+function remplirSelectsTypes(){
+  const codes = TYPES_PAR_PROJET[currentProjet] || [];
+  const optionsChoix = '<option value="">Choisir...</option>' + codes.map(c=>`<option value="${c}">${libelleType(c)}</option>`).join('');
+
+  const fType = document.getElementById('f_type');
+  if(fType){ const cur=fType.value; fType.innerHTML = optionsChoix; fType.value = codes.includes(cur) ? cur : ''; }
+
+  const skType = document.getElementById('sk_type');
+  if(skType){ const cur=skType.value; skType.innerHTML = optionsChoix; skType.value = codes.includes(cur) ? cur : ''; }
+
+  const skFiltre = document.getElementById('sk_filtreType');
+  if(skFiltre){
+    const cur = skFiltre.value;
+    skFiltre.innerHTML = '<option value="">Tous les types</option>' + codes.map(c=>`<option value="${c}">${c}</option>`).join('');
+    skFiltre.value = codes.includes(cur) ? cur : '';
+  }
+}
+
+function changerProjetActif(projet){
+  currentProjet = projet;
+  localStorage.setItem(PROJET_KEY, projet);
+  document.getElementById('topbarTitle').textContent = '📋 Souscription — ' + NOMS_PROJET[currentProjet];
+  remplirSelectsTypes();
+  toast('📍 Projet actif : ' + NOMS_PROJET[currentProjet], 'success');
+  // Recharge tout ce qui dépend du projet (stock, clients, tableau de bord...)
+  chargerClients().then(()=>{ renderDashboard(); renderListe(); });
+  if(document.getElementById('page-stock').classList.contains('active')) chargerStockAdmin();
+  if(!_editId) resetForm();
+}
+
 // Recharge les données silencieusement et ne redessine que la page actuellement
 // affichée, pour ne jamais interrompre une saisie en cours (ex: formulaire "Nouveau client").
 async function autoRefreshTick(){
   if(!authToken) return;
   await chargerClients(true);
+  majLeadsBadge();
   const pageActive = document.querySelector('.page.active');
   const id = pageActive ? pageActive.id.replace('page-','') : null;
   if(id==='dashboard') renderDashboard();
   else if(id==='liste') renderListe();
-  else if(id==='leads') chargerLeads(true);
-  else if(id==='mesleads') chargerMesLeads(true);
+  else if(id==='leads') renderLeads();
   // "nouveau" et "admin" ne sont pas redessinés automatiquement (saisie en cours / gestion des comptes)
-  if(['chef_agence','admin'].includes(currentUser?.role)) rafraichirBadgeLeads();
-  if(currentUser?.role === 'commercial') rafraichirBadgeMesLeads();
 }
 
 function renderSessionBadge(){
   const el = document.getElementById('sessionBadge');
   if(!el || !currentUser) return;
-  const roleLabel = currentUser.titre || { commercial:'Commercial', dir_commercial:'Directeur Commercial', agent_recouvrement:'Agent Recouvrement', recouv:'Directrice Recouvrement', chef_agence:"Chef d'Agence", admin:'Administrateur' }[currentUser.role] || currentUser.role;
+  const roleLabel = currentUser.titre || { commercial:'Commercial', dir_commercial:'Directeur Commercial', admin:'Administrateur' }[currentUser.role] || currentUser.role;
   el.innerHTML = `<span>👤 <b>${currentUser.fullName||currentUser.username}</b> · ${roleLabel}</span><button onclick="logout()">Déconnexion</button>`;
   const toggle = document.getElementById('scopeToggle');
   if(toggle){
@@ -1141,23 +1210,15 @@ function renderSessionBadge(){
     }
   }
   const navAdmin = document.getElementById('navAdmin');
-  if(navAdmin) navAdmin.style.display = (['chef_agence','admin'].includes(currentUser.role)) ? '' : 'none';
+  if(navAdmin) navAdmin.style.display = (currentUser.role === 'admin') ? '' : 'none';
   const navStock = document.getElementById('navStock');
-  if(navStock) navStock.style.display = (['dir_commercial','chef_agence','admin'].includes(currentUser.role)) ? '' : 'none';
-  const navLeads = document.getElementById('navLeads');
-  const peutGererLeads = ['chef_agence','admin'].includes(currentUser.role);
-  if(navLeads) navLeads.style.display = peutGererLeads ? '' : 'none';
-  if(peutGererLeads) rafraichirBadgeLeads();
-  const navMesLeads = document.getElementById('navMesLeads');
-  const estCommercial = currentUser.role === 'commercial';
-  if(navMesLeads) navMesLeads.style.display = estCommercial ? '' : 'none';
-  if(estCommercial) rafraichirBadgeMesLeads();
+  if(navStock) navStock.style.display = (['dir_commercial','admin'].includes(currentUser.role)) ? '' : 'none';
 }
 
 // Charge les clients depuis le serveur selon la portée choisie (own/team).
 async function chargerClients(silencieux){
   try{
-    const data = await apiFetch('/clients?scope=' + teamScope);
+    const data = await apiFetch('/clients?scope=' + teamScope + '&projet=' + encodeURIComponent(currentProjet));
     DATA.clients = (data.clients||[]).map(c=>{ c.id = c.dossier; return c; });
   }catch(e){
     if(!silencieux) toast(e.message || "Erreur lors du chargement des clients.", 'danger');
@@ -1217,7 +1278,111 @@ function goTab(id, btn){
   if(id==='prospection') initProspection();
   if(id==='stock') chargerStockAdmin();
   if(id==='leads') chargerLeads();
-  if(id==='mesleads') chargerMesLeads();
+}
+
+// ─────────────────────────────────────────────────────────────────
+// LEADS PUBLICITAIRES (formulaire public → annonce sponsorisée)
+// ─────────────────────────────────────────────────────────────────
+let LEADS = [];
+
+async function chargerLeads(){
+  const tbl = document.getElementById('tLeads');
+  if(tbl) tbl.innerHTML = '<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement...</td></tr>';
+  try{
+    const data = await apiFetch('/leads');
+    LEADS = data.leads || [];
+  }catch(e){
+    toast(e.message || 'Erreur de chargement des leads.', 'danger');
+    LEADS = [];
+  }
+  majLeadsBadge();
+  renderLeads();
+}
+
+function majLeadsBadge(){
+  const badge = document.getElementById('leadsBadge');
+  if(!badge) return;
+  const nb = LEADS.filter(l=>l.statut==='Nouveau').length;
+  badge.textContent = nb;
+  badge.style.display = nb ? 'inline' : 'none';
+}
+
+function renderLeads(){
+  const filtreStatut = document.getElementById('lead_filtreStatut').value;
+  const filtreMoi = document.getElementById('lead_filtreMoi').checked;
+  let list = LEADS.slice();
+  if(filtreStatut) list = list.filter(l=>l.statut===filtreStatut);
+  if(filtreMoi) list = list.filter(l=>l.prisEnChargePar===currentUser.fullName);
+
+  document.getElementById('leadsCount').textContent = `${list.length} / ${LEADS.length} lead(s)`;
+
+  const statutColor = { 'Nouveau':'#a32d2d','Pris en charge':'#b8860b','Contacté':'#00294d','Converti':'#1a7a4a','Perdu':'#888' };
+  const statutBg    = { 'Nouveau':'#fceaea','Pris en charge':'#fff8e1','Contacté':'#e8f0f7','Converti':'#e8f5ee','Perdu':'#f1f1f1' };
+
+  const t = document.getElementById('tLeads');
+  if(!list.length){
+    t.innerHTML = '<tbody><tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun lead pour ces critères.</td></tr></tbody>';
+    return;
+  }
+  t.innerHTML = '<thead><tr><th>Reçu le</th><th>Nom</th><th>Profession</th><th>Contact</th><th>Intéressé</th><th>Type(s)</th><th>Budget</th><th>Paiement</th><th>Visite souhaitée</th><th>Statut</th><th>Pris par</th><th>Actions</th></tr></thead><tbody>' +
+    list.map(l=>{
+      const date = new Date(l.createdAt).toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'});
+      const interesseBadge = l.interesse==='oui' ? '<span class="badge" style="background:#e8f5ee;color:#1a7a4a">✓ Oui</span>' : '<span class="badge" style="background:#f1f1f1;color:#888">Non</span>';
+      return `<tr>
+        <td style="font-size:11px;white-space:nowrap">${date}</td>
+        <td><strong>${l.nom}</strong></td>
+        <td style="font-size:12px">${l.profession||'—'}${l.employeur?' · '+l.employeur:''}</td>
+        <td style="font-size:12px">📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
+        <td>${interesseBadge}</td>
+        <td style="font-size:12px">${(l.typesLogement||[]).join(', ')||'—'}</td>
+        <td style="font-size:12px">${l.budget||'—'}</td>
+        <td style="font-size:12px">${l.modePaiement||'—'}</td>
+        <td style="font-size:12px">${l.dateVisiteSouhaitee?new Date(l.dateVisiteSouhaitee).toLocaleDateString('fr-FR'):'—'}</td>
+        <td>
+          <select onchange="changerStatutLead('${l.id}', this.value)" style="background:${statutBg[l.statut]};color:${statutColor[l.statut]};font-size:11px;font-weight:700;border:none;padding:4px 6px;border-radius:5px">
+            ${['Nouveau','Pris en charge','Contacté','Converti','Perdu'].map(s=>`<option value="${s}"${s===l.statut?' selected':''}>${s}</option>`).join('')}
+          </select>
+        </td>
+        <td style="font-size:12px">${l.prisEnChargePar||'—'}</td>
+        <td style="white-space:nowrap">
+          ${!l.prisEnChargePar ? `<button class="btn btn-sm btn-navy" onclick="prendreLead('${l.id}')">Je le prends</button>` : ''}
+          <button class="btn btn-sm btn-danger" onclick="supprimerLead('${l.id}')" title="Supprimer" style="margin-left:3px">🗑</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody>';
+}
+
+async function prendreLead(id){
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ prisEnChargePar: currentUser.fullName, statut: 'Pris en charge' }) });
+    toast('✅ Lead attribué — à toi de jouer !','success');
+    chargerLeads();
+  }catch(e){
+    toast(e.message || 'Erreur.', 'danger');
+  }
+}
+
+async function changerStatutLead(id, statut){
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ statut }) });
+    const l = LEADS.find(x=>x.id===id); if(l) l.statut = statut;
+    majLeadsBadge();
+    toast(`Statut mis à jour : ${statut}`,'success');
+  }catch(e){
+    toast(e.message || 'Erreur.', 'danger');
+    chargerLeads();
+  }
+}
+
+async function supprimerLead(id){
+  if(!confirm('Supprimer ce lead ?')) return;
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'DELETE' });
+    toast('Lead supprimé.','warning');
+    chargerLeads();
+  }catch(e){
+    toast(e.message || 'Erreur lors de la suppression.', 'danger');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1227,7 +1392,7 @@ let STOCK_ADMIN = [];
 
 async function chargerStockAdmin(){
   try{
-    const data = await apiFetch('/stock');
+    const data = await apiFetch('/stock?projet=' + encodeURIComponent(currentProjet));
     STOCK_ADMIN = data.stock || [];
   }catch(e){ toast(e.message||'Erreur de chargement du stock.','danger'); STOCK_ADMIN=[]; }
   const ilots = Array.from(new Set(STOCK_ADMIN.map(a=>a.ilot))).sort();
@@ -1301,6 +1466,7 @@ function ouvrirAjoutStock(){
 
 async function sauvegarderNouvelAppt(){
   const body = {
+    projet: currentProjet,
     ilot: document.getElementById('sk_ilot').value.trim(),
     bat: document.getElementById('sk_bat').value.trim(),
     etage: document.getElementById('sk_etage').value.trim(),
@@ -1360,7 +1526,7 @@ async function confirmerImportStock(){
   const btn = document.getElementById('btnImportStock');
   btn.disabled = true; btn.textContent = '⏳ Import...';
   try{
-    const res = await apiFetch('/stock/bulk', { method:'POST', body: JSON.stringify({ appartements: _importStockParsed }) });
+    const res = await apiFetch('/stock/bulk', { method:'POST', body: JSON.stringify({ projet: currentProjet, appartements: _importStockParsed }) });
     toast(`✅ ${res.ajoutes} appartement(s) importé(s)${res.ignores.length?', '+res.ignores.length+' ignoré(s) (déjà existants ou incomplets)':''}.`, 'success');
     fermer('mImportStock');
     chargerStockAdmin();
@@ -1577,7 +1743,7 @@ async function ouvrirStockPicker(){
   tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement du stock disponible...</td></tr>`;
   ouvrir('mStock');
   try{
-    const data = await apiFetch('/stock?statut=DISPONIBLE&type=' + encodeURIComponent(type));
+    const data = await apiFetch('/stock?statut=DISPONIBLE&type=' + encodeURIComponent(type) + '&projet=' + encodeURIComponent(currentProjet));
     _stockDispo = data.stock || [];
   }catch(e){
     tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
@@ -1925,217 +2091,8 @@ const ROLE_LABELS = {
   dir_commercial: 'Directeur Commercial',
   agent_recouvrement: 'Agent Recouvrement',
   recouv: 'Directrice Recouvrement',
-  chef_agence: "Chef d'Agence",
   admin: 'Administrateur',
 };
-
-// ─────────────────────────────────────────────────────────────────
-// LEADS PUB (Chef d'Agence / Admin) — réception et dispatching des
-// prospects captés via les formulaires de campagnes Facebook/LinkedIn.
-// ─────────────────────────────────────────────────────────────────
-let DATA_LEADS = [];
-let DATA_COMMERCIAUX = []; // liste des comptes "commercial" actifs, pour la liste déroulante d'assignation
-
-const LEAD_STATUT_STYLE = {
-  'Nouveau':   { bg:'#fceaea', color:'#a32d2d' },
-  'Assigné':   { bg:'#fff8e1', color:'#7a5000' },
-  'Contacté':  { bg:'#e8f0f7', color:'#00294d' },
-  'Converti':  { bg:'#e8f5ee', color:'#1a7a4a' },
-  'Perdu':     { bg:'#f1f3f5', color:'#666' },
-};
-
-async function rafraichirBadgeLeads(){
-  const badge = document.getElementById('leadsBadge');
-  if(!badge || !currentUser || !['chef_agence','admin'].includes(currentUser.role)) return;
-  try{
-    const data = await apiFetch('/leads');
-    const nouveaux = (data.leads||[]).filter(l=>l.statut==='Nouveau').length;
-    if(nouveaux > 0){ badge.textContent = nouveaux; badge.style.display = 'inline-block'; }
-    else { badge.style.display = 'none'; }
-  }catch(e){ /* silencieux — pas grave si le badge ne se met pas à jour */ }
-}
-
-async function chargerLeads(silencieux){
-  const tbl = document.getElementById('tLeads');
-  if(!silencieux && tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement...</td></tr>`;
-  try{
-    const [dataLeads, dataUsers] = await Promise.all([
-      apiFetch('/leads'),
-      DATA_COMMERCIAUX.length ? Promise.resolve({users:DATA_COMMERCIAUX}) : apiFetch('/users'),
-    ]);
-    DATA_LEADS = dataLeads.leads || [];
-    if(!DATA_COMMERCIAUX.length){
-      DATA_COMMERCIAUX = (dataUsers.users||[]).filter(u=>u.role==='commercial' && u.active!==false);
-    }
-  }catch(e){
-    if(tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
-    return;
-  }
-  renderLeads();
-  rafraichirBadgeLeads();
-}
-
-function renderLeads(){
-  const tbl = document.getElementById('tLeads');
-  if(!tbl) return;
-  const fStatut = document.getElementById('lead_filtreStatut').value;
-  const fAssigne = document.getElementById('lead_filtreAssigne').value;
-
-  let list = DATA_LEADS.slice();
-  if(fStatut) list = list.filter(l=>l.statut===fStatut);
-  if(fAssigne==='__non_assigne__') list = list.filter(l=>!l.assigneA);
-
-  document.getElementById('leadsCount').textContent = `${list.length} / ${DATA_LEADS.length} lead(s)`;
-
-  if(list.length===0){
-    tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun lead pour ce filtre.</td></tr>`;
-    return;
-  }
-
-  const optsCommerciaux = (leadId, assigneActuel) => `
-    <option value="">— Choisir —</option>
-    ${DATA_COMMERCIAUX.map(c=>`<option value="${c.username}" ${c.username===assigneActuel?'selected':''}>${c.fullName}</option>`).join('')}
-  `;
-
-  tbl.innerHTML = `
-    <thead><tr>
-      <th>Reçu le</th><th>Nom</th><th>Contact</th><th>Intérêt</th><th>Type / Budget</th><th>Statut</th><th style="width:190px">Assigné à</th><th style="width:90px">Actions</th>
-    </tr></thead>
-    <tbody>
-      ${list.map(l=>{
-        const st = LEAD_STATUT_STYLE[l.statut] || LEAD_STATUT_STYLE['Nouveau'];
-        const dateRecu = l.createdAt ? new Date(l.createdAt).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-        return `
-        <tr>
-          <td style="font-size:11.5px;color:var(--gray);white-space:nowrap">${dateRecu}</td>
-          <td><strong>${l.nom}</strong>${l.profession?`<div style="font-size:11px;color:var(--gray)">${l.profession}${l.employeur?' · '+l.employeur:''}</div>`:''}</td>
-          <td style="font-size:12.5px">📞 ${l.contact||'—'}${l.whatsapp?`<br>💬 ${l.whatsapp}`:''}</td>
-          <td>${l.interesse==='oui' ? '<span class="badge badge-success">✓ Intéressé</span>' : '<span class="badge badge-gray">Non précisé</span>'}</td>
-          <td style="font-size:12px">${(l.typesLogement||[]).join(', ')||'—'}${l.budget?`<br><span style="color:var(--gray)">${l.budget}</span>`:''}</td>
-          <td><span class="badge" style="background:${st.bg};color:${st.color}">${l.statut}</span></td>
-          <td>
-            <select class="filter-sel" style="width:100%;font-size:12px;padding:6px 8px" onchange="assignerLead('${l.id}', this.value)">
-              ${optsCommerciaux(l.id, l.assigneA)}
-            </select>
-          </td>
-          <td>
-            <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="supprimerLead('${l.id}')">🗑</button>
-          </td>
-        </tr>`;
-      }).join('')}
-    </tbody>`;
-}
-
-async function assignerLead(id, username){
-  const commercial = DATA_COMMERCIAUX.find(c=>c.username===username);
-  try{
-    await apiFetch('/leads/'+encodeURIComponent(id), {
-      method:'PUT',
-      body: JSON.stringify({ assigneA: username || null, assigneNom: commercial ? commercial.fullName : null })
-    });
-    toast(commercial ? `Lead assigné à ${commercial.fullName}.` : 'Assignation retirée.', 'success');
-    chargerLeads(true);
-  }catch(e){
-    toast(e.message || "Erreur lors de l'assignation.", 'danger');
-    renderLeads(); // revert visuel du <select>
-  }
-}
-
-async function supprimerLead(id){
-  if(!confirm('Supprimer définitivement ce lead ?')) return;
-  try{
-    await apiFetch('/leads/'+encodeURIComponent(id), { method:'DELETE' });
-    toast('Lead supprimé.', 'success');
-    chargerLeads(true);
-  }catch(e){
-    toast(e.message || 'Erreur lors de la suppression.', 'danger');
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────
-// MES LEADS (Commercial) — leads que le Chef d'Agence lui a assignés.
-// Lecture seule sur l'attribution ; seul le statut peut évoluer.
-// ─────────────────────────────────────────────────────────────────
-let DATA_MES_LEADS = [];
-
-async function rafraichirBadgeMesLeads(){
-  const badge = document.getElementById('mesLeadsBadge');
-  if(!badge || !currentUser || currentUser.role !== 'commercial') return;
-  try{
-    const data = await apiFetch('/leads/mine');
-    // "Nouveau pour moi" = pas encore traité (statut encore à "Assigné", donc pas
-    // encore marqué Contacté/Converti/Perdu par le commercial lui-même).
-    const nonTraites = (data.leads||[]).filter(l=>l.statut==='Assigné').length;
-    if(nonTraites > 0){ badge.textContent = nonTraites; badge.style.display = 'inline-block'; }
-    else { badge.style.display = 'none'; }
-  }catch(e){ /* silencieux */ }
-}
-
-async function chargerMesLeads(silencieux){
-  const tbl = document.getElementById('tMesLeads');
-  if(!silencieux && tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement...</td></tr>`;
-  try{
-    const data = await apiFetch('/leads/mine');
-    DATA_MES_LEADS = data.leads || [];
-  }catch(e){
-    if(tbl) tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
-    return;
-  }
-  renderMesLeads();
-  rafraichirBadgeMesLeads();
-}
-
-function renderMesLeads(){
-  const tbl = document.getElementById('tMesLeads');
-  if(!tbl) return;
-  document.getElementById('mesLeadsCount').textContent = `${DATA_MES_LEADS.length} lead(s) assigné(s)`;
-
-  if(DATA_MES_LEADS.length===0){
-    tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun lead ne vous a été assigné pour l'instant.</td></tr>`;
-    return;
-  }
-
-  // Les plus récemment assignés en premier
-  const list = DATA_MES_LEADS.slice().sort((a,b)=> new Date(b.assigneLe||b.createdAt) - new Date(a.assigneLe||a.createdAt));
-
-  tbl.innerHTML = `
-    <thead><tr>
-      <th>Assigné le</th><th>Nom</th><th>Contact</th><th>Intérêt</th><th>Type / Budget</th><th>Statut</th><th style="width:230px">Mettre à jour</th>
-    </tr></thead>
-    <tbody>
-      ${list.map(l=>{
-        const st = LEAD_STATUT_STYLE[l.statut] || LEAD_STATUT_STYLE['Nouveau'];
-        const dateAssign = l.assigneLe ? new Date(l.assigneLe).toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit',hour:'2-digit',minute:'2-digit'}) : '—';
-        const termine = ['Converti','Perdu'].includes(l.statut);
-        return `
-        <tr>
-          <td style="font-size:11.5px;color:var(--gray);white-space:nowrap">${dateAssign}</td>
-          <td><strong>${l.nom}</strong>${l.profession?`<div style="font-size:11px;color:var(--gray)">${l.profession}${l.employeur?' · '+l.employeur:''}</div>`:''}</td>
-          <td style="font-size:12.5px">📞 ${l.contact||'—'}${l.whatsapp?`<br>💬 ${l.whatsapp}`:''}</td>
-          <td>${l.interesse==='oui' ? '<span class="badge badge-success">✓ Intéressé</span>' : '<span class="badge badge-gray">Non précisé</span>'}</td>
-          <td style="font-size:12px">${(l.typesLogement||[]).join(', ')||'—'}${l.budget?`<br><span style="color:var(--gray)">${l.budget}</span>`:''}</td>
-          <td><span class="badge" style="background:${st.bg};color:${st.color}">${l.statut}</span></td>
-          <td>
-            ${termine ? '<span style="font-size:11px;color:var(--gray)">Dossier clos</span>' : `
-            <button class="btn btn-outline btn-sm" onclick="majStatutMonLead('${l.id}','Contacté')">📞 Contacté</button>
-            <button class="btn btn-outline btn-sm" style="color:var(--success);border-color:var(--success)" onclick="majStatutMonLead('${l.id}','Converti')">✅ Converti</button>
-            <button class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="majStatutMonLead('${l.id}','Perdu')">✗ Perdu</button>
-            `}
-          </td>
-        </tr>`;
-      }).join('')}
-    </tbody>`;
-}
-
-async function majStatutMonLead(id, statut){
-  try{
-    await apiFetch('/leads/'+encodeURIComponent(id)+'/statut', { method:'PUT', body: JSON.stringify({ statut }) });
-    toast(`Lead marqué "${statut}".`, 'success');
-    chargerMesLeads(true);
-  }catch(e){
-    toast(e.message || 'Erreur lors de la mise à jour.', 'danger');
-  }
-}
 
 async function renderAdmin(){
   const tbl = document.getElementById('tUsers');
@@ -2153,7 +2110,7 @@ async function renderAdmin(){
   }
   tbl.innerHTML = `
     <thead><tr>
-      <th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Titre affiché</th><th>Nom d'agent</th><th>Accès Gestion</th><th>Statut</th><th style="width:170px">Actions</th>
+      <th>Identifiant</th><th>Nom complet</th><th>Rôle</th><th>Projet</th><th>Titre affiché</th><th>Nom d'agent</th><th>Accès Gestion</th><th>Statut</th><th style="width:170px">Actions</th>
     </tr></thead>
     <tbody>
       ${DATA_USERS.map(u=>`
@@ -2161,6 +2118,7 @@ async function renderAdmin(){
           <td><strong>${u.username}</strong></td>
           <td>${u.fullName}</td>
           <td>${ROLE_LABELS[u.role]||u.role}</td>
+          <td>${u.projet ? '<span class="badge badge-navy" style="font-size:10px">'+NOMS_PROJET[u.projet]+'</span>' : '<span style="color:var(--gray)">Tous</span>'}</td>
           <td>${u.titre||'<span style="color:var(--gray)">—</span>'}</td>
           <td>${u.agentName||'—'}</td>
           <td>${u.role==='dir_commercial' ? (u.accesGestion===true ? '<span style="color:var(--success);font-weight:700">✓ Oui</span>' : '<span style="color:var(--gray)">Non</span>') : '<span style="color:var(--gray)">—</span>'}</td>
@@ -2179,6 +2137,7 @@ function onUserRoleChange(){
   const role = document.getElementById('u_role').value;
   const needsAgentName = role==='commercial' || role==='dir_commercial';
   document.getElementById('u_agentName_wrap').style.display = needsAgentName ? 'block' : 'none';
+  document.getElementById('u_projet_wrap').style.display = needsAgentName ? 'block' : 'none';
   document.getElementById('u_accesGestion_wrap').style.display = (role==='dir_commercial') ? 'block' : 'none';
 }
 
@@ -2193,6 +2152,7 @@ function openUserModal(username){
   document.getElementById('u_fullName').value = existant ? existant.fullName : '';
   document.getElementById('u_role').value = existant ? existant.role : 'commercial';
   document.getElementById('u_agentName').value = existant ? (existant.agentName||'') : '';
+  document.getElementById('u_projet').value = existant ? (existant.projet||'CSE') : 'CSE';
   document.getElementById('u_titre').value = existant ? (existant.titre||'') : '';
   document.getElementById('u_accesGestion').checked = existant ? existant.accesGestion===true : false;
   document.getElementById('u_password').value = '';
@@ -2211,6 +2171,7 @@ async function saveUser(){
   const fullName = document.getElementById('u_fullName').value.trim();
   const role = document.getElementById('u_role').value;
   const agentName = document.getElementById('u_agentName').value.trim();
+  const projet = (role==='commercial'||role==='dir_commercial') ? document.getElementById('u_projet').value : null;
   const titre = document.getElementById('u_titre').value.trim();
   const accesGestion = role==='dir_commercial' && document.getElementById('u_accesGestion').checked;
   const password = document.getElementById('u_password').value;
@@ -2225,12 +2186,12 @@ async function saveUser(){
   btn.disabled = true; btn.textContent = '⏳ Enregistrement...';
   try{
     if(_editUsername){
-      const body = { fullName, role, agentName: agentName||null, titre: titre||null, accesGestion, active: document.getElementById('u_active').checked };
+      const body = { fullName, role, agentName: agentName||null, projet, titre: titre||null, accesGestion, active: document.getElementById('u_active').checked };
       if(password) body.password = password;
       await apiFetch('/users/' + encodeURIComponent(_editUsername), { method:'PUT', body: JSON.stringify(body) });
       toast(`✅ Compte "${username}" mis à jour.`,'success');
     } else {
-      await apiFetch('/users', { method:'POST', body: JSON.stringify({ username, password, fullName, role, agentName: agentName||null, titre: titre||null, accesGestion }) });
+      await apiFetch('/users', { method:'POST', body: JSON.stringify({ username, password, fullName, role, agentName: agentName||null, projet, titre: titre||null, accesGestion }) });
       toast(`✅ Compte "${username}" créé.`,'success');
     }
     fermer('mUser');
@@ -2305,7 +2266,7 @@ function ymd(d){ return d.toISOString().slice(0,10); }
 async function initProspection(){
   if(!_prospInit){
     document.getElementById('rapportDate').value = ymd(new Date());
-    if(['dir_commercial','chef_agence','admin'].includes(currentUser.role)){
+    if(['dir_commercial','admin'].includes(currentUser.role)){
       document.getElementById('prospTabEquipe').style.display = '';
     }
     _prospInit = true;
@@ -2502,7 +2463,7 @@ async function chargerResumeHebdo(){
   const dimanche = new Date(lundi); dimanche.setDate(dimanche.getDate()+6);
   document.getElementById('resumeSemaineLabel').textContent = fmtDateFr(lundi)+' → '+fmtDateFr(dimanche);
   const semaine = isoSemaine(lundi);
-  const isTeam = ['dir_commercial','chef_agence','admin'].includes(currentUser.role);
+  const isTeam = ['dir_commercial','admin'].includes(currentUser.role);
   const scope = isTeam ? 'team' : 'own';
   try{
     const [rapRes, planRes] = await Promise.all([
@@ -2569,7 +2530,7 @@ function renderResumeHebdo(rapports, planning){
 function kpiSmall(lbl,val,color){ return '<div class="kpi" style="border-color:'+color+'20;background:'+color+'10;min-width:100px"><div class="kn">'+lbl+'</div><div class="kv" style="font-size:16px;color:'+color+'">'+val+'</div></div>'; }
 
 async function chargerPromesses(){
-  const scope = ['dir_commercial','chef_agence','admin'].includes(currentUser.role) ? 'team' : 'own';
+  const scope = ['dir_commercial','admin'].includes(currentUser.role) ? 'team' : 'own';
   try{
     const data = await apiFetch('/prospection/rapports?scope='+scope);
     renderPromesses(data.rapports || []);
@@ -2600,7 +2561,7 @@ function renderPromesses(rapports){
     kpi('📅 Cette semaine', cetteSemaine, '#b8860b');
 
   const t = document.getElementById('tPromesses');
-  const isTeam = ['dir_commercial','chef_agence','admin'].includes(currentUser.role);
+  const isTeam = ['dir_commercial','admin'].includes(currentUser.role);
   if(!items.length){
     t.innerHTML = '<tbody><tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucune promesse de souscription enregistrée pour le moment.</td></tr></tbody>';
     return;
@@ -2868,6 +2829,11 @@ async function genererDossier(id){
   _pdfHtml = null;
   const c = DATA.clients.find(x=>x.id===id);
   if(!c){ toast('Client introuvable.','danger'); return; }
+
+  if((c.projet||'CSE') === 'COLOMBE3'){
+    toast("Le modèle de contrat pour Cité Colombe 3 n'est pas encore disponible — le texte légal spécifique à ce projet doit d'abord être fourni par l'administration. Le dossier client reste normalement enregistré et suivi en attendant.", 'warning', 9000);
+    return;
+  }
 
   document.querySelector('#mGen .modal-header div').textContent = '📄 Génération du dossier de souscription';
   document.getElementById('genSteps').innerHTML = `
