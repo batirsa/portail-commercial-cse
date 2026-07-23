@@ -571,7 +571,7 @@ textarea{resize:vertical;min-height:70px}
       <button class="btn btn-outline btn-sm" onclick="chargerLeads()" title="Recharger">🔄 Actualiser</button>
     </div>
     <div class="card-body">
-      <p class="form-hint" style="margin-bottom:12px">Demandes reçues via le formulaire public lié à l'annonce sponsorisée. Prends en charge un lead pour le retirer de la file commune, puis fais évoluer son statut au fil de ton suivi.</p>
+      <p class="form-hint" style="margin-bottom:12px">Demandes reçues via le formulaire public lié à l'annonce sponsorisée. L'attribution à un commercial est faite par le Chef d'agence / Directeur Commercial — une fois attribué, le commercial concerné fait évoluer le statut au fil de son suivi.</p>
       <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
         <select id="lead_filtreStatut" class="filter-sel" onchange="renderLeads()">
           <option value="">Tous statuts</option>
@@ -1284,6 +1284,7 @@ function goTab(id, btn){
 // LEADS PUBLICITAIRES (formulaire public → annonce sponsorisée)
 // ─────────────────────────────────────────────────────────────────
 let LEADS = [];
+let EQUIPE_COMMERCIALE = []; // liste des commerciaux du projet, pour attribution manuelle par le Chef d'agence
 
 async function chargerLeads(){
   const tbl = document.getElementById('tLeads');
@@ -1294,6 +1295,12 @@ async function chargerLeads(){
   }catch(e){
     toast(e.message || 'Erreur de chargement des leads.', 'danger');
     LEADS = [];
+  }
+  if(['dir_commercial','admin'].includes(currentUser.role)){
+    try{
+      const eq = await apiFetch('/equipe');
+      EQUIPE_COMMERCIALE = eq.equipe || [];
+    }catch(e){ EQUIPE_COMMERCIALE = []; }
   }
   majLeadsBadge();
   renderLeads();
@@ -1345,17 +1352,21 @@ function renderLeads(){
         </td>
         <td style="font-size:12px">${l.prisEnChargePar||'—'}</td>
         <td style="white-space:nowrap">
-          ${!l.prisEnChargePar ? `<button class="btn btn-sm btn-navy" onclick="prendreLead('${l.id}')">Je le prends</button>` : ''}
+          ${['dir_commercial','admin'].includes(currentUser.role) ? `
+          <select onchange="if(this.value){attribuerLead('${l.id}', this.value); this.value='';}" style="font-size:11px;padding:4px 6px;border-radius:5px;border:1px solid var(--border);margin-right:3px">
+            <option value="">Attribuer à...</option>
+            ${EQUIPE_COMMERCIALE.map(m=>`<option value="${m.agentName}">${m.agentName}</option>`).join('')}
+          </select>` : ''}
           <button class="btn btn-sm btn-danger" onclick="supprimerLead('${l.id}')" title="Supprimer" style="margin-left:3px">🗑</button>
         </td>
       </tr>`;
     }).join('') + '</tbody>';
 }
 
-async function prendreLead(id){
+async function attribuerLead(id, agentName){
   try{
-    await apiFetch('/leads/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ prisEnChargePar: currentUser.fullName, statut: 'Pris en charge' }) });
-    toast('✅ Lead attribué — à toi de jouer !','success');
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ prisEnChargePar: agentName, statut: 'Pris en charge' }) });
+    toast(`✅ Lead attribué à ${agentName}.`,'success');
     chargerLeads();
   }catch(e){
     toast(e.message || 'Erreur.', 'danger');
