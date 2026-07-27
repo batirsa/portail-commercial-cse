@@ -512,7 +512,7 @@ textarea{resize:vertical;min-height:70px}
 <div class="modal-overlay" id="mAjoutStock">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
-      <div style="font-weight:700;font-size:15px">➕ Nouvel appartement</div>
+      <div style="font-weight:700;font-size:15px" id="mAjoutStockTitle">➕ Nouvel appartement</div>
       <button class="modal-close" onclick="fermer('mAjoutStock')">×</button>
     </div>
     <div class="modal-body">
@@ -536,7 +536,7 @@ textarea{resize:vertical;min-height:70px}
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fermer('mAjoutStock')">Annuler</button>
-      <button class="btn btn-navy" onclick="sauvegarderNouvelAppt()">💾 Ajouter au stock</button>
+      <button class="btn btn-navy" id="btnSaveStock" onclick="sauvegarderNouvelAppt()">💾 Ajouter au stock</button>
     </div>
   </div>
 </div>
@@ -1441,7 +1441,11 @@ function renderStockAdmin(){
       <td><span class="badge badge-gold">${a.type}</span></td><td>${a.superf} m²</td><td style="font-size:12px">${fmt(a.prix)} F</td>
       <td>${statutBadge(a.statut)}</td>
       <td style="font-size:12px">${a.dossier ? (DATA.clients.some(c=>c.dossier===a.dossier) ? a.dossier+' — '+(a.nom||'') : '<span style="color:var(--danger)">⚠️ '+a.dossier+' — '+(a.nom||'')+' (dossier introuvable)</span>') : '—'}</td>
-      <td>${a.statut!=='DISPONIBLE' ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger)" onclick="libererAppt(${a.id})">🔓 Libérer</button>` : ''}</td>
+      <td style="white-space:nowrap">
+        <button class="btn btn-sm btn-outline" onclick="ouvrirModifierStock(${a.id})" title="Modifier">✏️</button>
+        ${a.statut!=='DISPONIBLE' ? `<button class="btn btn-sm btn-outline" style="color:var(--danger);border-color:var(--danger);margin-left:3px" onclick="libererAppt(${a.id})">🔓 Libérer</button>` : ''}
+        ${!a.dossier ? `<button class="btn btn-sm btn-danger" style="margin-left:3px" onclick="supprimerAppt(${a.id})" title="Supprimer">🗑</button>` : ''}
+      </td>
     </tr>`).join('') + '</tbody>';
 }
 
@@ -1469,9 +1473,32 @@ function stockTypeChange(){
   }
 }
 
+let _editStockId = null;
+
 function ouvrirAjoutStock(){
+  _editStockId = null;
+  document.getElementById('mAjoutStockTitle').textContent = '➕ Nouvel appartement';
+  document.getElementById('btnSaveStock').textContent = '💾 Ajouter au stock';
   ['sk_ilot','sk_bat','sk_etage','sk_appt','sk_superf','sk_prix','sk_position','sk_orient'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('sk_type').value='';
+  ouvrir('mAjoutStock');
+}
+
+function ouvrirModifierStock(id){
+  const a = STOCK_ADMIN.find(x=>x.id===id);
+  if(!a){ toast('Appartement introuvable.','danger'); return; }
+  _editStockId = id;
+  document.getElementById('mAjoutStockTitle').textContent = `✏️ Modifier — ${a.appt} (îlot ${a.ilot})`;
+  document.getElementById('btnSaveStock').textContent = '💾 Enregistrer les modifications';
+  document.getElementById('sk_ilot').value = a.ilot||'';
+  document.getElementById('sk_bat').value = a.bat||'';
+  document.getElementById('sk_etage').value = a.etage||'';
+  document.getElementById('sk_appt').value = a.appt||'';
+  document.getElementById('sk_type').value = a.type||'';
+  document.getElementById('sk_superf').value = a.superf||'';
+  document.getElementById('sk_prix').value = a.prix||'';
+  document.getElementById('sk_position').value = a.position||'';
+  document.getElementById('sk_orient').value = a.orient||'';
   ouvrir('mAjoutStock');
 }
 
@@ -1492,12 +1519,30 @@ async function sauvegarderNouvelAppt(){
     toast('Îlot, bâtiment, n° appartement et type sont obligatoires.','danger'); return;
   }
   try{
-    await apiFetch('/stock', { method:'POST', body: JSON.stringify(body) });
-    toast(`✅ Appartement ${body.appt} ajouté au stock.`,'success');
+    if(_editStockId){
+      await apiFetch('/stock/'+encodeURIComponent(_editStockId), { method:'PUT', body: JSON.stringify(body) });
+      toast(`✅ Appartement ${body.appt} modifié.`,'success');
+    } else {
+      await apiFetch('/stock', { method:'POST', body: JSON.stringify(body) });
+      toast(`✅ Appartement ${body.appt} ajouté au stock.`,'success');
+    }
     fermer('mAjoutStock');
     chargerStockAdmin();
   }catch(e){
     toast(e.message || "Erreur lors de l'ajout.", 'danger');
+  }
+}
+
+async function supprimerAppt(id){
+  const a = STOCK_ADMIN.find(x=>x.id===id);
+  if(!a) return;
+  if(!confirm(`Supprimer définitivement l'appartement ${a.appt} (îlot ${a.ilot}, bât. ${a.bat}) du stock ?\n\nCette action est irréversible.`)) return;
+  try{
+    await apiFetch('/stock/'+encodeURIComponent(id), { method:'DELETE' });
+    toast(`🗑 Appartement ${a.appt} supprimé.`,'warning');
+    chargerStockAdmin();
+  }catch(e){
+    toast(e.message || 'Erreur lors de la suppression.', 'danger');
   }
 }
 
