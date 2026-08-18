@@ -911,7 +911,7 @@ textarea{resize:vertical;min-height:70px}
     </div>
     <div class="modal-body">
       <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-        <select class="filter-sel" id="sk_ilot" onchange="renderStockPicker()" style="flex:1;min-width:120px">
+        <select class="filter-sel" id="skp_ilot" onchange="renderStockPicker()" style="flex:1;min-width:120px">
           <option value="">Tous les îlots</option>
         </select>
         <input class="search-box" id="sk_search" placeholder="🔍 N° appartement, bâtiment..." oninput="renderStockPicker()" style="flex:2;min-width:200px">
@@ -1837,13 +1837,13 @@ async function ouvrirStockPicker(){
     return;
   }
   const ilots = Array.from(new Set(_stockDispo.map(a=>a.ilot))).sort();
-  document.getElementById('sk_ilot').innerHTML = '<option value="">Tous les îlots</option>' + ilots.map(i=>`<option value="${i}">Îlot ${i}</option>`).join('');
+  document.getElementById('skp_ilot').innerHTML = '<option value="">Tous les îlots</option>' + ilots.map(i=>`<option value="${i}">Îlot ${i}</option>`).join('');
   document.getElementById('sk_search').value = '';
   renderStockPicker();
 }
 
 function renderStockPicker(){
-  const ilot = document.getElementById('sk_ilot').value;
+  const ilot = document.getElementById('skp_ilot').value;
   const q = document.getElementById('sk_search').value.trim().toLowerCase();
   let list = _stockDispo;
   if(ilot) list = list.filter(a=>a.ilot===ilot);
