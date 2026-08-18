@@ -298,7 +298,7 @@ textarea{resize:vertical;min-height:70px}
               <div class="form-hint" id="f_commercial_hint" style="display:none">En tant que Chef d'agence, vous pouvez attribuer ce dossier à un autre commercial de l'équipe.</div>
             </div>
             <div class="form-group"><label>Gestionnaire</label><input id="f_gestionnaire" placeholder="Nom du gestionnaire"></div>
-            <div class="form-group"><label>Cité</label><input id="f_cite" value="San-Pédro" readonly></div>
+            <div class="form-group"><label>Cité</label><input id="f_cite" value="Cité Sainte-Élisabeth" readonly></div>
             <div class="form-group"><label>Domiciliation bancaire</label><input id="f_domiciliation" placeholder="ex: SGBCI Plateau"></div>
           </div>
         </div>
@@ -1803,7 +1803,7 @@ function resetForm(){
   document.getElementById('f_modePaiement').value='Espèces';
   document.getElementById('f_modeLivraison').value='Clés en main';
   document.getElementById('f_optionFinition').value='Domotique';
-  document.getElementById('f_cite').value='San-Pédro';
+  document.getElementById('f_cite').value = NOMS_PROJET[currentProjet] || 'Cité Sainte-Élisabeth';
   document.getElementById('calcZone').style.display='none';
   document.getElementById('echeancierSection').style.display='none';
   document.getElementById('vagueCard').style.display='none';
@@ -2363,7 +2363,7 @@ function editerClient(id){
   document.getElementById('f_dateSign').value=c.dateSign||today();
   populerFieldCommercial(c.commercial||'');
   document.getElementById('f_gestionnaire').value=c.gestionnaire||'';
-  document.getElementById('f_cite').value=c.cite||'San-Pédro';
+  document.getElementById('f_cite').value=c.cite||NOMS_PROJET[c.projet||currentProjet]||'Cité Sainte-Élisabeth';
   document.getElementById('f_domiciliation').value=c.domiciliation||'';
   document.getElementById('f_nom').value=c.nom||'';
   document.getElementById('f_typeSouscripteur').value = c.typeSouscripteur || 'particulier';
