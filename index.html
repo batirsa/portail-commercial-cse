@@ -388,6 +388,14 @@ textarea{resize:vertical;min-height:70px}
           <input type="hidden" id="f_stockId">
           <input type="hidden" id="f_porte"><input type="hidden" id="f_ilot">
           <input type="hidden" id="f_lot"><input type="hidden" id="f_etage">
+
+          <div id="apptsSuppBlock" style="margin-top:16px;padding-top:14px;border-top:1px dashed #ccc">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+              <div style="font-weight:700;font-size:13px;color:#00294d">🏢 Achat groupé — appartements supplémentaires <span style="font-weight:400;color:var(--gray)">(immeuble entier, plusieurs unités pour le même client...)</span></div>
+              <button type="button" class="btn btn-outline btn-sm" onclick="ouvrirStockPicker('multi')">➕ Ajouter d'autres appartements</button>
+            </div>
+            <div id="apptsSuppListe" style="margin-top:10px"></div>
+          </div>
         </div>
 
         <!-- FINANCIER -->
@@ -906,7 +914,7 @@ textarea{resize:vertical;min-height:70px}
 <div class="modal-overlay" id="mStock">
   <div class="modal" style="max-width:820px">
     <div class="modal-header">
-      <div style="font-weight:700;font-size:15px">🏢 Choisir un appartement disponible</div>
+      <div style="font-weight:700;font-size:15px" id="mStockTitle">🏢 Choisir un appartement disponible</div>
       <button class="modal-close" onclick="fermer('mStock')">×</button>
     </div>
     <div class="modal-body">
@@ -914,13 +922,18 @@ textarea{resize:vertical;min-height:70px}
         <select class="filter-sel" id="skp_ilot" onchange="renderStockPicker()" style="flex:1;min-width:120px">
           <option value="">Tous les îlots</option>
         </select>
+        <select class="filter-sel" id="skp_type" onchange="renderStockPicker()" style="flex:1;min-width:120px;display:none">
+          <option value="">Tous les types</option>
+        </select>
         <input class="search-box" id="sk_search" placeholder="🔍 N° appartement, bâtiment..." oninput="renderStockPicker()" style="flex:2;min-width:200px">
         <span id="skCount" style="align-self:center;font-size:12px;color:var(--gray);white-space:nowrap"></span>
       </div>
+      <div class="form-hint" id="mStockMultiHint" style="display:none;margin-bottom:8px">Coche les appartements souhaités (filtre par îlot/type/bâtiment pour sélectionner tout un immeuble d'un coup), puis valide en bas.</div>
       <div class="table-wrap" style="max-height:420px;overflow-y:auto"><table id="tStockPicker"></table></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="fermer('mStock')">Annuler</button>
+      <button class="btn btn-navy" id="btnValiderSelectionMulti" style="display:none" onclick="validerSelectionMultiple()">✅ Ajouter la sélection (0)</button>
     </div>
   </div>
 </div>
@@ -1766,6 +1779,10 @@ function resetForm(){
   document.getElementById('apptChoisi').style.display='none';
   document.getElementById('apptNonChoisi').style.display='block';
   document.getElementById('btnChoisirAppt').disabled = true;
+  _apptsSupp = [];
+  _prixPrincipalCatalogue = 0;
+  _dernierSuppTotalApplique = 0;
+  renderApptsSupp();
   populerFieldCommercial();
   document.getElementById('f_dateNaiss').value='';
   document.getElementById('f_cniVal').value='';
@@ -1823,46 +1840,169 @@ function typeChange(){
 
 // ─── SÉLECTION D'APPARTEMENT DANS LE STOCK RÉEL ───
 let _stockDispo = [];
-async function ouvrirStockPicker(){
-  const type = document.getElementById('f_type').value;
-  if(!type){ toast('Choisissez d\'abord un type d\'appartement.','danger'); return; }
+let _stockPickerMode = 'single'; // 'single' (appartement principal) | 'multi' (achat groupé)
+let _stockPickerSelection = new Set();
+let _apptsSupp = [];             // appartements supplémentaires du dossier en cours (achat groupé)
+let _prixPrincipalCatalogue = 0; // prix catalogue de l'appartement principal choisi, pour le recalcul du total
+let _dernierSuppTotalApplique = 0; // dernier sous-total supplémentaire déjà intégré à f_prix (pour un recalcul correct)
+
+async function ouvrirStockPicker(mode){
+  _stockPickerMode = (mode === 'multi') ? 'multi' : 'single';
+  _stockPickerSelection = new Set();
+  let type = '';
+  if(_stockPickerMode === 'single'){
+    type = document.getElementById('f_type').value;
+    if(!type){ toast('Choisissez d\'abord un type d\'appartement.','danger'); return; }
+  }
+  document.getElementById('mStockTitle').textContent = _stockPickerMode==='multi' ? '🏢 Ajouter des appartements (achat groupé)' : '🏢 Choisir un appartement disponible';
+  document.getElementById('skp_type').style.display = _stockPickerMode==='multi' ? '' : 'none';
+  document.getElementById('mStockMultiHint').style.display = _stockPickerMode==='multi' ? 'block' : 'none';
+  document.getElementById('btnValiderSelectionMulti').style.display = _stockPickerMode==='multi' ? '' : 'none';
   const tbl = document.getElementById('tStockPicker');
   tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement du stock disponible...</td></tr>`;
   ouvrir('mStock');
   try{
-    const data = await apiFetch('/stock?statut=DISPONIBLE&type=' + encodeURIComponent(type) + '&projet=' + encodeURIComponent(currentProjet));
+    const url = _stockPickerMode==='multi'
+      ? '/stock?statut=DISPONIBLE&projet=' + encodeURIComponent(currentProjet)
+      : '/stock?statut=DISPONIBLE&type=' + encodeURIComponent(type) + '&projet=' + encodeURIComponent(currentProjet);
+    const data = await apiFetch(url);
     _stockDispo = data.stock || [];
   }catch(e){
     tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
     return;
   }
+  // Exclut les appartements déjà retenus pour ce dossier (principal + suppléments déjà ajoutés)
+  // pour ne jamais permettre de le sélectionner deux fois.
+  const dejaRetenus = new Set(_apptsSupp.map(a=>String(a.stockId)));
+  const idPrincipal = document.getElementById('f_stockId').value;
+  if(idPrincipal) dejaRetenus.add(String(idPrincipal));
+  _stockDispo = _stockDispo.filter(a=> !dejaRetenus.has(String(a.id)));
+
   const ilots = Array.from(new Set(_stockDispo.map(a=>a.ilot))).sort();
   document.getElementById('skp_ilot').innerHTML = '<option value="">Tous les îlots</option>' + ilots.map(i=>`<option value="${i}">Îlot ${i}</option>`).join('');
+  if(_stockPickerMode==='multi'){
+    const types = Array.from(new Set(_stockDispo.map(a=>a.type))).sort();
+    document.getElementById('skp_type').innerHTML = '<option value="">Tous les types</option>' + types.map(t=>`<option value="${t}">${t}</option>`).join('');
+  }
   document.getElementById('sk_search').value = '';
   renderStockPicker();
 }
 
-function renderStockPicker(){
+function _stockPickerListeFiltree(){
   const ilot = document.getElementById('skp_ilot').value;
+  const type = _stockPickerMode==='multi' ? document.getElementById('skp_type').value : '';
   const q = document.getElementById('sk_search').value.trim().toLowerCase();
   let list = _stockDispo;
   if(ilot) list = list.filter(a=>a.ilot===ilot);
+  if(type) list = list.filter(a=>a.type===type);
   if(q) list = list.filter(a => (a.appt||'').toLowerCase().includes(q) || (a.bat||'').toLowerCase().includes(q));
+  return list;
+}
 
+function renderStockPicker(){
+  const list = _stockPickerListeFiltree();
   document.getElementById('skCount').textContent = `${list.length} disponible(s)`;
   const tbl = document.getElementById('tStockPicker');
   if(!list.length){
     tbl.innerHTML = `<tr><td style="padding:20px;text-align:center;color:var(--gray)">Aucun appartement disponible pour ces critères.</td></tr>`;
     return;
   }
-  tbl.innerHTML = `
-    <thead><tr><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Surface</th><th>Prix</th><th style="width:100px"></th></tr></thead>
-    <tbody>${list.map(a=>`
-      <tr>
-        <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td><strong>${a.appt}</strong></td>
-        <td>${a.superf} m²</td><td>${fmt(a.prix)} F</td>
-        <td><button class="btn btn-navy btn-sm" onclick="choisirAppartement(${a.id})">Choisir</button></td>
-      </tr>`).join('')}</tbody>`;
+  if(_stockPickerMode==='multi'){
+    const touscoches = list.every(a=>_stockPickerSelection.has(String(a.id)));
+    tbl.innerHTML = `
+      <thead><tr>
+        <th style="width:34px"><input type="checkbox" ${touscoches?'checked':''} onchange="toggleToutCocher(this.checked)" title="Tout cocher / décocher (résultats affichés)"></th>
+        <th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix</th>
+      </tr></thead>
+      <tbody>${list.map(a=>`
+        <tr>
+          <td><input type="checkbox" ${_stockPickerSelection.has(String(a.id))?'checked':''} onchange="toggleStockPick(${a.id}, this.checked)"></td>
+          <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td><strong>${a.appt}</strong></td>
+          <td>${a.type}</td><td>${a.superf} m²</td><td>${fmt(a.prix)} F</td>
+        </tr>`).join('')}</tbody>`;
+    majCompteurSelectionMulti();
+  } else {
+    tbl.innerHTML = `
+      <thead><tr><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Surface</th><th>Prix</th><th style="width:100px"></th></tr></thead>
+      <tbody>${list.map(a=>`
+        <tr>
+          <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td><strong>${a.appt}</strong></td>
+          <td>${a.superf} m²</td><td>${fmt(a.prix)} F</td>
+          <td><button class="btn btn-navy btn-sm" onclick="choisirAppartement(${a.id})">Choisir</button></td>
+        </tr>`).join('')}</tbody>`;
+  }
+}
+
+function toggleStockPick(id, checked){
+  if(checked) _stockPickerSelection.add(String(id));
+  else _stockPickerSelection.delete(String(id));
+  majCompteurSelectionMulti();
+}
+
+function toggleToutCocher(checked){
+  const list = _stockPickerListeFiltree();
+  list.forEach(a=>{ if(checked) _stockPickerSelection.add(String(a.id)); else _stockPickerSelection.delete(String(a.id)); });
+  renderStockPicker();
+}
+
+function majCompteurSelectionMulti(){
+  const btn = document.getElementById('btnValiderSelectionMulti');
+  if(btn) btn.textContent = `✅ Ajouter la sélection (${_stockPickerSelection.size})`;
+}
+
+function validerSelectionMultiple(){
+  if(!_stockPickerSelection.size){ toast('Sélectionnez au moins un appartement.','danger'); return; }
+  const ajoutes = _stockDispo.filter(a=>_stockPickerSelection.has(String(a.id)));
+  for(const a of ajoutes){
+    _apptsSupp.push({ stockId:a.id, ilot:a.ilot, bat:a.bat, etage:a.etage, porte:a.appt, type:a.type, surface:a.superf, prix:a.prix });
+  }
+  fermer('mStock');
+  renderApptsSupp();
+  toast(`✅ ${ajoutes.length} appartement(s) ajouté(s) au dossier.`,'success');
+}
+
+function renderApptsSupp(){
+  const wrap = document.getElementById('apptsSuppListe');
+  if(!wrap) return;
+  if(!_apptsSupp.length){
+    wrap.innerHTML = '<div class="form-hint">Aucun appartement supplémentaire — dossier standard à un seul appartement.</div>';
+    return;
+  }
+  const total = _apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0);
+  wrap.innerHTML = `
+    <div class="table-wrap"><table style="width:100%;font-size:12px">
+      <thead><tr><th>Îlot</th><th>Bât.</th><th>Étage</th><th>Porte</th><th>Type</th><th>Surface</th><th>Prix</th><th></th></tr></thead>
+      <tbody>${_apptsSupp.map((a,i)=>`
+        <tr>
+          <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td><strong>${a.porte}</strong></td>
+          <td>${a.type}</td><td>${a.surface} m²</td><td>${fmt(a.prix)} F</td>
+          <td><button type="button" class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="retirerApptSupp(${i})" title="Retirer">✕</button></td>
+        </tr>`).join('')}</tbody>
+    </table></div>
+    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div style="font-size:12px;color:var(--gray)">Sous-total suppléments : <strong>${fmt(total)} F CFA</strong> (${_apptsSupp.length} appartement${_apptsSupp.length>1?'s':''} en plus du principal)</div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="recalculerPrixTotal()">🔄 Recalculer le prix total du dossier</button>
+    </div>`;
+}
+
+function retirerApptSupp(i){
+  _apptsSupp.splice(i,1);
+  renderApptsSupp();
+}
+
+// Recalcule le champ "Prix du logement" en additionnant le prix catalogue de
+// l'appartement principal + le sous-total des suppléments — sans écraser un
+// éventuel prix négocié à la main pour la partie "principal + suppléments déjà
+// intégrés lors d'un précédent clic" (on retire d'abord ce qui avait été ajouté
+// la dernière fois, avant de rajouter le nouveau sous-total).
+function recalculerPrixTotal(){
+  const suppTotal = _apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0);
+  const actuel = Number(document.getElementById('f_prix').value) || 0;
+  const base = actuel - _dernierSuppTotalApplique;
+  document.getElementById('f_prix').value = base + suppTotal;
+  _dernierSuppTotalApplique = suppTotal;
+  calcFinancier();
+  toast('💰 Prix total recalculé (' + (_apptsSupp.length+1) + ' appartement(s)).','success');
 }
 
 function choisirAppartement(id){
@@ -1875,6 +2015,7 @@ function choisirAppartement(id){
   document.getElementById('f_etage').value = a.etage;
   document.getElementById('f_surface').value = a.superf;
   if(!document.getElementById('f_prix').value) document.getElementById('f_prix').value = a.prix;
+  _prixPrincipalCatalogue = a.prix;
   document.getElementById('apptChoisiTitre').textContent = `Îlot ${a.ilot} · Bâtiment ${a.bat} · ${a.etage} · Porte ${a.appt}`;
   document.getElementById('apptChoisiDetail').textContent = `${a.type} · ${a.superf} m² · ${fmt(a.prix)} F CFA${a.position?' · '+a.position:''}`;
   document.getElementById('apptChoisi').style.display = 'block';
@@ -1974,6 +2115,7 @@ function updateRecap(){
       <div class="fiche-item"><div class="fiche-label">Apport</div><div class="fiche-value" style="color:var(--success)">${fmtM(apport)} F</div></div>
     </div>
     ${vg?`<div style="margin-top:10px;background:${vg.bg};border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;color:${vg.color}">🏗 V${vague} — ${vg.label} (${vg.mois} mois)</div>`:''}
+    ${_apptsSupp.length?`<div style="margin-top:10px;background:#e8f0f7;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;color:#00294d">🏢 Achat groupé — ${1+_apptsSupp.length} appartements au total</div>`:''}
     ${commercial?`<div style="margin-top:10px;font-size:12px;color:var(--gray);text-align:center">Commercial : <strong>${commercial}</strong></div>`:''}
   `;
 }
@@ -2002,6 +2144,7 @@ async function sauvegarder(){
     dossier:        document.getElementById('f_dossier').value || undefined, // laissé vide => généré par le serveur
     dateSign:       document.getElementById('f_dateSign').value,
     commercial,
+    appartementsSuppIds: _apptsSupp.map(a=>a.stockId),
     gestionnaire:   document.getElementById('f_gestionnaire').value,
     cite:           document.getElementById('f_cite').value,
     domiciliation:  document.getElementById('f_domiciliation').value,
@@ -2120,6 +2263,10 @@ function editerClient(id){
   document.getElementById('f_ilot').value=c.ilot||'';
   document.getElementById('f_lot').value=c.lot||'';
   document.getElementById('f_etage').value=c.etage||'';
+  _apptsSupp = Array.isArray(c.appartementsSupp) ? c.appartementsSupp.slice() : [];
+  _prixPrincipalCatalogue = 0; // inconnu en édition — le bouton "Recalculer" se base sur le prix déjà affiché
+  _dernierSuppTotalApplique = 0;
+  renderApptsSupp();
   if(c.stockId){
     document.getElementById('apptChoisiTitre').textContent = `Îlot ${c.ilot||'—'} · Bâtiment ${c.lot||'—'} · ${c.etage||'—'} · Porte ${c.porte||'—'}`;
     document.getElementById('apptChoisiDetail').textContent = `${c.type||''} · ${c.surface||'—'} m²`;
