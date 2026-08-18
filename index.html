@@ -391,9 +391,13 @@ textarea{resize:vertical;min-height:70px}
 
           <div id="apptsSuppBlock" style="margin-top:16px;padding-top:14px;border-top:1px dashed #ccc">
             <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-              <div style="font-weight:700;font-size:13px;color:#00294d">🏢 Achat groupé — appartements supplémentaires <span style="font-weight:400;color:var(--gray)">(immeuble entier, plusieurs unités pour le même client...)</span></div>
-              <button type="button" class="btn btn-outline btn-sm" onclick="ouvrirStockPicker('multi')">➕ Ajouter d'autres appartements</button>
+              <div style="font-weight:700;font-size:13px;color:#00294d">🏢 Achat groupé <span style="font-weight:400;color:var(--gray)">(immeuble entier, plusieurs unités pour le même client...)</span></div>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <button type="button" class="btn btn-outline btn-sm" onclick="ouvrirSectionImmeuble()">🏢 Acheter un immeuble entier</button>
+                <button type="button" class="btn btn-outline btn-sm" onclick="ouvrirStockPicker('multi')">➕ Ajouter des appartements au choix</button>
+              </div>
             </div>
+            <div id="immeubleZone" style="display:none;margin-top:10px;background:#f7f8fa;border:1px solid var(--border);border-radius:8px;padding:12px"></div>
             <div id="apptsSuppListe" style="margin-top:10px"></div>
           </div>
         </div>
@@ -1782,6 +1786,7 @@ function resetForm(){
   _apptsSupp = [];
   _prixPrincipalCatalogue = 0;
   _dernierSuppTotalApplique = 0;
+  document.getElementById('immeubleZone').style.display = 'none';
   renderApptsSupp();
   populerFieldCommercial();
   document.getElementById('f_dateNaiss').value='';
@@ -2003,6 +2008,138 @@ function recalculerPrixTotal(){
   _dernierSuppTotalApplique = suppTotal;
   calcFinancier();
   toast('💰 Prix total recalculé (' + (_apptsSupp.length+1) + ' appartement(s)).','success');
+}
+
+// ─── ACHAT D'UN IMMEUBLE ENTIER ───
+// Sélection rapide « Îlot → Bâtiment » qui affiche automatiquement le nombre
+// d'appartements disponibles dans cet immeuble et leur coût total, puis les
+// ajoute tous d'un coup au dossier (au lieu de cocher chaque appartement un
+// par un dans le picker classique).
+let _immStockDispo = [];
+
+async function ouvrirSectionImmeuble(){
+  const zone = document.getElementById('immeubleZone');
+  zone.style.display = 'block';
+  zone.innerHTML = '<div class="form-hint">Chargement du stock disponible...</div>';
+  try{
+    const data = await apiFetch('/stock?statut=DISPONIBLE&projet=' + encodeURIComponent(currentProjet));
+    _immStockDispo = data.stock || [];
+  }catch(e){
+    zone.innerHTML = `<div class="form-hint" style="color:var(--danger)">${e.message||'Erreur de chargement.'}</div>`;
+    return;
+  }
+  const dejaRetenus = new Set(_apptsSupp.map(a=>String(a.stockId)));
+  const idPrincipal = document.getElementById('f_stockId').value;
+  if(idPrincipal) dejaRetenus.add(String(idPrincipal));
+  _immStockDispo = _immStockDispo.filter(a=> !dejaRetenus.has(String(a.id)));
+
+  const ilots = Array.from(new Set(_immStockDispo.map(a=>a.ilot))).sort();
+  zone.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+      <div class="form-group" style="min-width:150px;margin-bottom:0">
+        <label>Îlot</label>
+        <select id="imm_ilot" onchange="majBatimentsImmeuble()">
+          <option value="">Choisir...</option>
+          ${ilots.map(i=>`<option value="${i}">Îlot ${i}</option>`).join('')}
+        </select>
+      </div>
+      <div class="form-group" style="min-width:190px;margin-bottom:0">
+        <label>Immeuble</label>
+        <select id="imm_bat" onchange="majApercuImmeuble()">
+          <option value="">Choisir un îlot d'abord</option>
+        </select>
+      </div>
+      <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('immeubleZone').style.display='none'">Fermer</button>
+    </div>
+    <div id="immApercu" style="margin-top:10px"></div>
+  `;
+}
+
+// Les bâtiments sont jumelés deux par deux pour former un immeuble physique
+// (ex. 30A + 30B = immeuble 30). Cette fonction retire la lettre finale du
+// code bâtiment pour retrouver le numéro d'immeuble commun aux deux moitiés.
+function numeroImmeuble(bat){
+  const base = String(bat||'').replace(/[A-Za-z]+$/, '');
+  return base || bat;
+}
+
+function majBatimentsImmeuble(){
+  const ilot = document.getElementById('imm_ilot').value;
+  const sel = document.getElementById('imm_bat');
+  document.getElementById('immApercu').innerHTML = '';
+  if(!ilot){ sel.innerHTML = '<option value="">Choisir un îlot d\'abord</option>'; return; }
+  const parImmeuble = {}; // numéro d'immeuble -> Set des bâtiments qui le composent (ex. {30: {30A,30B}})
+  _immStockDispo.filter(a=>a.ilot===ilot).forEach(a=>{
+    const num = numeroImmeuble(a.bat);
+    if(!parImmeuble[num]) parImmeuble[num] = new Set();
+    parImmeuble[num].add(a.bat);
+  });
+  const numeros = Object.keys(parImmeuble).sort();
+  sel.innerHTML = '<option value="">Choisir...</option>' + numeros.map(num=>{
+    const bats = Array.from(parImmeuble[num]).sort().join(' + ');
+    return `<option value="${num}">Immeuble ${num} (${bats})</option>`;
+  }).join('');
+}
+
+function majApercuImmeuble(){
+  const ilot = document.getElementById('imm_ilot').value;
+  const numImm = document.getElementById('imm_bat').value;
+  const div = document.getElementById('immApercu');
+  if(!ilot || !numImm){ div.innerHTML=''; return; }
+  const units = _immStockDispo.filter(a=>a.ilot===ilot && numeroImmeuble(a.bat)===numImm);
+  if(!units.length){
+    div.innerHTML = '<div class="form-hint" style="color:var(--danger)">Aucun appartement disponible dans cet immeuble (déjà tous attribués, ou déjà ajoutés à ce dossier).</div>';
+    return;
+  }
+  const batsComposant = Array.from(new Set(units.map(a=>a.bat))).sort().join(' + ');
+  const total = units.reduce((s,a)=>s+(Number(a.prix)||0),0);
+  const parType = {};
+  units.forEach(a=>{ parType[a.type] = (parType[a.type]||0)+1; });
+  const detailTypes = Object.entries(parType).map(([t,n])=>`${n} × ${t}`).join(', ');
+  div.innerHTML = `
+    <div style="background:#e8f0f7;border:1.5px solid #00294d;border-radius:8px;padding:12px 16px">
+      <div style="font-weight:800;color:#00294d;font-size:14px">🏢 Immeuble ${numImm} (bâtiments ${batsComposant}) — Îlot ${ilot}</div>
+      <div style="font-size:12px;color:#555;margin-top:2px">${units.length} appartement${units.length>1?'s':''} disponible${units.length>1?'s':''} (${detailTypes})</div>
+      <div style="font-size:13px;font-weight:700;color:#00294d;margin-top:6px">Coût total catalogue : ${fmt(total)} F CFA</div>
+      <button type="button" class="btn btn-navy btn-sm" style="margin-top:10px" onclick="ajouterImmeubleEntier('${ilot}','${numImm}')">🏢 Ajouter cet immeuble au dossier (${units.length} appartement${units.length>1?'s':''})</button>
+    </div>`;
+}
+
+function ajouterImmeubleEntier(ilot, numImm){
+  const units = _immStockDispo.filter(a=>a.ilot===ilot && numeroImmeuble(a.bat)===numImm);
+  if(!units.length){ toast('Aucun appartement disponible dans cet immeuble.','danger'); return; }
+  const batsComposant = Array.from(new Set(units.map(a=>a.bat))).sort().join(' + ');
+
+  const idPrincipal = document.getElementById('f_stockId').value;
+  let unitesEnSupplement = units;
+
+  if(!idPrincipal){
+    const principal = units[0];
+    document.getElementById('f_type').value = principal.type;
+    typeChange();
+    document.getElementById('f_stockId').value = principal.id;
+    document.getElementById('f_porte').value = principal.appt;
+    document.getElementById('f_ilot').value = principal.ilot;
+    document.getElementById('f_lot').value = principal.bat;
+    document.getElementById('f_etage').value = principal.etage;
+    document.getElementById('f_surface').value = principal.superf;
+    if(!document.getElementById('f_prix').value) document.getElementById('f_prix').value = principal.prix;
+    _prixPrincipalCatalogue = principal.prix;
+    document.getElementById('apptChoisiTitre').textContent = `Îlot ${principal.ilot} · Bâtiment ${principal.bat} · ${principal.etage} · Porte ${principal.appt}`;
+    document.getElementById('apptChoisiDetail').textContent = `${principal.type} · ${principal.superf} m² · ${fmt(principal.prix)} F CFA${principal.position?' · '+principal.position:''}`;
+    document.getElementById('apptChoisi').style.display = 'block';
+    document.getElementById('apptNonChoisi').style.display = 'none';
+    unitesEnSupplement = units.slice(1);
+  }
+
+  for(const a of unitesEnSupplement){
+    _apptsSupp.push({ stockId:a.id, ilot:a.ilot, bat:a.bat, etage:a.etage, porte:a.appt, type:a.type, surface:a.superf, prix:a.prix });
+  }
+  renderApptsSupp();
+  calcFinancier();
+  updateRecap();
+  document.getElementById('immeubleZone').style.display = 'none';
+  toast(`✅ Immeuble ${numImm} (bâtiments ${batsComposant}, îlot ${ilot}) ajouté au dossier : ${units.length} appartement${units.length>1?'s':''}.`,'success');
 }
 
 function choisirAppartement(id){
