@@ -294,7 +294,8 @@ textarea{resize:vertical;min-height:70px}
             <div class="form-group"><label>N° Dossier</label><input id="f_dossier" placeholder="REF-2025-0001"></div>
             <div class="form-group"><label>Date de souscription</label><input id="f_dateSign" type="date"></div>
             <div class="form-group"><label>Commercial *</label>
-              <input id="f_commercial" readonly style="background:#f7f8fa;color:var(--navy);font-weight:700">
+              <select id="f_commercial" style="background:#f7f8fa;color:var(--navy);font-weight:700"></select>
+              <div class="form-hint" id="f_commercial_hint" style="display:none">En tant que Chef d'agence, vous pouvez attribuer ce dossier à un autre commercial de l'équipe.</div>
             </div>
             <div class="form-group"><label>Gestionnaire</label><input id="f_gestionnaire" placeholder="Nom du gestionnaire"></div>
             <div class="form-group"><label>Cité</label><input id="f_cite" value="San-Pédro" readonly></div>
@@ -1308,6 +1309,8 @@ async function chargerLeads(){
   }
   majLeadsBadge();
   renderLeads();
+  const pageNouveauActive = document.getElementById('page-nouveau') && document.getElementById('page-nouveau').classList.contains('active');
+  if(pageNouveauActive && !_editId) populerFieldCommercial(document.getElementById('f_commercial').value);
 }
 
 function majLeadsBadge(){
@@ -1721,6 +1724,30 @@ function statutPaiementBadge(c){
 // ─────────────────────────────────────────────────────────────────
 // FORMULAIRE
 // ─────────────────────────────────────────────────────────────────
+// Remplit le champ "Commercial" du formulaire d'enregistrement.
+// - Un commercial simple : champ verrouillé sur lui-même (comportement historique).
+// - Un Chef d'agence / Directeur Commercial / admin : liste déroulante de toute
+//   l'équipe (EQUIPE_COMMERCIALE, la même utilisée pour l'attribution des leads),
+//   pré-sélectionnée sur lui-même, mais modifiable pour attribuer le dossier
+//   à un autre commercial de l'agence.
+function populerFieldCommercial(selected){
+  const sel = document.getElementById('f_commercial');
+  const hint = document.getElementById('f_commercial_hint');
+  if(!sel || !currentUser) return;
+  const estChef = ['dir_commercial','admin'].includes(currentUser.role);
+  const monNom = currentUser.agentName || currentUser.fullName || '';
+  let options = estChef ? EQUIPE_COMMERCIALE.slice() : [];
+  if(monNom && !options.some(m=>m.agentName===monNom)) options.unshift({ agentName: monNom });
+  // Si un dossier existant est attribué à un commercial absent de la liste
+  // (ex: compte désactivé depuis), on l'ajoute quand même pour ne pas perdre l'info.
+  if(selected && !options.some(m=>m.agentName===selected)) options.push({ agentName: selected });
+  sel.innerHTML = options.map(m=>`<option value="${m.agentName}">${m.agentName}</option>`).join('');
+  sel.value = selected || monNom;
+  sel.disabled = !estChef;
+  sel.style.background = estChef ? '#fff' : '#f7f8fa';
+  if(hint) hint.style.display = estChef ? 'block' : 'none';
+}
+
 function resetForm(){
   _editId = null;
   _pieceIdData = null;
@@ -1739,7 +1766,7 @@ function resetForm(){
   document.getElementById('apptChoisi').style.display='none';
   document.getElementById('apptNonChoisi').style.display='block';
   document.getElementById('btnChoisirAppt').disabled = true;
-  document.getElementById('f_commercial').value = (currentUser && currentUser.agentName) || '';
+  populerFieldCommercial();
   document.getElementById('f_dateNaiss').value='';
   document.getElementById('f_cniVal').value='';
   document.getElementById('f_nationalite').value='Ivoirienne';
@@ -2053,7 +2080,7 @@ function editerClient(id){
   document.getElementById('formTitle').textContent='✏️ Modifier le client';
   document.getElementById('f_dossier').value=c.dossier||'';
   document.getElementById('f_dateSign').value=c.dateSign||today();
-  document.getElementById('f_commercial').value=c.commercial||'';
+  populerFieldCommercial(c.commercial||'');
   document.getElementById('f_gestionnaire').value=c.gestionnaire||'';
   document.getElementById('f_cite').value=c.cite||'San-Pédro';
   document.getElementById('f_domiciliation').value=c.domiciliation||'';
