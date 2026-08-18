@@ -1998,6 +1998,7 @@ async function sauvegarder(){
 
   const versements = collecterEcheancier();
   const client = {
+    projet:         currentProjet,
     dossier:        document.getElementById('f_dossier').value || undefined, // laissé vide => généré par le serveur
     dateSign:       document.getElementById('f_dateSign').value,
     commercial,
