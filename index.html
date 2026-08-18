@@ -3364,7 +3364,7 @@ function genererFicheIdentification(){
         ${champFull("Contact en cas d'absence (nom + téléphone)")}
       </div>
 
-      <div class="section-header">BIEN SOUSCRIT</div>
+      <div class="section-header">BIEN SOUSCRIT — APPARTEMENT PRINCIPAL</div>
       <div class="grid3">
         ${champ('Type (F2 / F3 / F4 / Penthouse 4p / Penthouse 5p)')}
         ${champ('Îlot')}
@@ -3374,9 +3374,31 @@ function genererFicheIdentification(){
         ${champ('Surface (m²)')}
       </div>
 
+      <div class="section-header">APPARTEMENTS SUPPLÉMENTAIRES <span style="font-weight:400;font-size:8pt;text-transform:none;letter-spacing:0">— à remplir uniquement si le client achète plusieurs appartements ou un immeuble entier (immeubles jumelés, ex. 30A + 30B)</span></div>
+      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-top:4px">
+        <thead><tr style="background:#f0f0f0">
+          <th style="border:1px solid #999;padding:4px">Îlot</th>
+          <th style="border:1px solid #999;padding:4px">Bâtiment</th>
+          <th style="border:1px solid #999;padding:4px">Étage</th>
+          <th style="border:1px solid #999;padding:4px">N° Appt</th>
+          <th style="border:1px solid #999;padding:4px">Type</th>
+          <th style="border:1px solid #999;padding:4px">Surface (m²)</th>
+        </tr></thead>
+        <tbody>
+          ${Array.from({length:6}).map(()=>`<tr>
+            <td style="border:1px solid #999;height:22px">&nbsp;</td>
+            <td style="border:1px solid #999">&nbsp;</td>
+            <td style="border:1px solid #999">&nbsp;</td>
+            <td style="border:1px solid #999">&nbsp;</td>
+            <td style="border:1px solid #999">&nbsp;</td>
+            <td style="border:1px solid #999">&nbsp;</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+
       <div class="section-header">MODALITÉS FINANCIÈRES</div>
       <div class="grid3">
-        ${champ('Prix du logement (F CFA)')}
+        ${champ('Prix TOTAL du dossier — tous appartements confondus (F CFA)')}
         ${champ('Frais de dossier (F CFA)')}
         ${champ('Apport initial (F CFA)')}
         ${champ('Mode de paiement')}
