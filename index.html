@@ -250,6 +250,12 @@ textarea{resize:vertical;min-height:70px}
       <div class="table-wrap"><table id="dashRecents"></table></div>
     </div>
   </div>
+  <div id="dashParCommercialCard" class="card" style="margin-top:20px;display:none">
+    <div class="card-header"><div class="card-title">👥 Répartition par commercial</div></div>
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap"><table id="dashParCommercial"></table></div>
+    </div>
+  </div>
 </div>
 
 <!-- ══ LISTE CLIENTS ══ -->
@@ -1677,6 +1683,46 @@ function renderDashboard(){
       <button class="btn btn-sm btn-navy" onclick="genererDossier('${c.id}')" style="margin-left:4px">📄 Dossier</button>
     </td>
   </tr>`).join('')}</tbody>`;
+
+  // Répartition par commercial — réservé Chef d'agence / dir_commercial / admin
+  const carteCommercial = document.getElementById('dashParCommercialCard');
+  if(['dir_commercial','admin'].includes(currentUser.role)){
+    carteCommercial.style.display = 'block';
+    chargerRepartitionCommercial();
+  } else {
+    carteCommercial.style.display = 'none';
+  }
+}
+
+async function chargerRepartitionCommercial(){
+  const tbl = document.getElementById('dashParCommercial');
+  tbl.innerHTML = `<tr><td style="padding:16px;text-align:center;color:var(--gray)">Chargement...</td></tr>`;
+  try{
+    const data = await apiFetch('/clients/stats/team?projet=' + encodeURIComponent(currentProjet));
+    const lignes = (data.parCommercial || []).slice().sort((a,b)=>b.dossiers-a.dossiers);
+    if(!lignes.length){
+      tbl.innerHTML = `<tr><td style="padding:16px;text-align:center;color:var(--gray)">Aucun dossier pour l'instant.</td></tr>`;
+      return;
+    }
+    tbl.innerHTML = `<thead><tr><th>Commercial</th><th>Nombre de dossiers</th><th>Part</th><th>CA cumulé</th></tr></thead>
+    <tbody>${lignes.map(l=>{
+      const pct = data.totalDossiers ? Math.round(l.dossiers/data.totalDossiers*100) : 0;
+      return `<tr>
+        <td><strong>${l.nom}</strong></td>
+        <td>${l.dossiers}</td>
+        <td style="min-width:140px">
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="flex:1;height:8px;background:#eee;border-radius:99px;overflow:hidden"><div style="height:100%;width:${pct}%;background:var(--navy);border-radius:99px"></div></div>
+            <span style="font-size:12px;color:var(--gray);white-space:nowrap">${pct}%</span>
+          </div>
+        </td>
+        <td style="font-weight:700">${fmt(l.ca)} F</td>
+      </tr>`;
+    }).join('')}</tbody>
+    <tfoot><tr style="font-weight:800;background:#f7f8fa"><td>Total équipe</td><td>${data.totalDossiers}</td><td></td><td>${fmt(data.totalCA)} F</td></tr></tfoot>`;
+  }catch(e){
+    tbl.innerHTML = `<tr><td style="padding:16px;text-align:center;color:var(--danger)">${e.message||'Erreur de chargement.'}</td></tr>`;
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────
