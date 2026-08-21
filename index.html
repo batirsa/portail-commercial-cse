@@ -2961,7 +2961,7 @@ async function chargerResumeHebdo(){
     const [rapRes, planRes, leadsRes] = await Promise.all([
       apiFetch('/prospection/rapports?scope='+scope+'&du='+ymd(lundi)+'&au='+ymd(dimanche)),
       apiFetch('/prospection/planning?scope='+scope+'&semaine='+encodeURIComponent(semaine)),
-      isTeam ? apiFetch('/leads') : Promise.resolve({leads:[]}),
+      apiFetch('/leads'), // le serveur limite déjà un commercial à ses propres leads
     ]);
     renderResumeHebdo(rapRes.rapports||[], planRes.planning||[], leadsRes.leads||[]);
   }catch(e){
