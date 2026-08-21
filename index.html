@@ -256,6 +256,10 @@ textarea{resize:vertical;min-height:70px}
       <div class="table-wrap"><table id="dashParCommercial"></table></div>
     </div>
   </div>
+  <div id="dashLeadsCard" class="card" style="margin-top:20px;display:none">
+    <div class="card-header"><div class="card-title">🎯 Leads publicitaires par commercial</div></div>
+    <div class="card-body" style="padding:0" id="dashLeadsBody"></div>
+  </div>
 </div>
 
 <!-- ══ LISTE CLIENTS ══ -->
@@ -1686,12 +1690,76 @@ function renderDashboard(){
 
   // Répartition par commercial — réservé Chef d'agence / dir_commercial / admin
   const carteCommercial = document.getElementById('dashParCommercialCard');
+  const carteLeads = document.getElementById('dashLeadsCard');
   if(['dir_commercial','admin'].includes(currentUser.role)){
     carteCommercial.style.display = 'block';
     chargerRepartitionCommercial();
+    carteLeads.style.display = 'block';
+    chargerLeadsDashboard();
   } else {
     carteCommercial.style.display = 'none';
+    carteLeads.style.display = 'none';
   }
+}
+
+async function chargerLeadsDashboard(){
+  const zone = document.getElementById('dashLeadsBody');
+  zone.innerHTML = `<div class="form-hint" style="padding:16px 18px">Chargement des leads...</div>`;
+  try{
+    const data = await apiFetch('/leads');
+    renderLeadsDashboard(data.leads || []);
+  }catch(e){
+    zone.innerHTML = `<div class="form-hint" style="padding:16px 18px;color:var(--danger)">${e.message||'Erreur de chargement.'}</div>`;
+  }
+}
+
+function renderLeadsDashboard(leads){
+  const zone = document.getElementById('dashLeadsBody');
+  const total = leads.length;
+  const parComm = {};
+  leads.forEach(l=>{
+    const key = l.prisEnChargePar || 'Non attribué';
+    if(!parComm[key]) parComm[key] = [];
+    parComm[key].push(l);
+  });
+  const noms = Object.keys(parComm).sort((a,b)=>{
+    if(a==='Non attribué') return 1;
+    if(b==='Non attribué') return -1;
+    return parComm[b].length - parComm[a].length;
+  });
+  if(!total){
+    zone.innerHTML = `<div class="form-hint" style="padding:16px 18px">Aucun lead enregistré pour l'instant.</div>`;
+    return;
+  }
+  zone.innerHTML = `
+    <div style="padding:14px 18px;font-size:13px;color:var(--gray);border-bottom:1px solid var(--border)">Total leads enregistrés : <strong style="color:var(--navy);font-size:16px">${total}</strong></div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Commercial</th><th>Nombre de leads</th><th></th></tr></thead>
+      <tbody>${noms.map((nom,i)=>`
+        <tr>
+          <td><strong>${nom}</strong></td>
+          <td>${parComm[nom].length}</td>
+          <td style="text-align:right"><button type="button" class="btn btn-outline btn-sm" onclick="toggleDashLeadsDetail(${i})">👁 Voir le détail</button></td>
+        </tr>
+        <tr id="dashLeadsDetail${i}" style="display:none"><td colspan="3" style="padding:0;background:#f7f8fa">
+          <table style="width:100%;font-size:12px">
+            <thead><tr><th>Nom</th><th>Contact</th><th>Statut</th><th>Reçu le</th></tr></thead>
+            <tbody>${parComm[nom].map(l=>`<tr>
+              <td>${l.nom}</td>
+              <td>📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
+              <td>${l.statut||'—'}</td>
+              <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
+            </tr>`).join('')}</tbody>
+          </table>
+        </td></tr>
+      `).join('')}</tbody>
+    </table></div>`;
+}
+
+function toggleDashLeadsDetail(i){
+  const row = document.getElementById('dashLeadsDetail'+i);
+  if(!row) return;
+  row.style.display = row.style.display==='none' ? 'table-row' : 'none';
 }
 
 async function chargerRepartitionCommercial(){
@@ -2884,18 +2952,20 @@ async function chargerResumeHebdo(){
   const isTeam = ['dir_commercial','admin'].includes(currentUser.role);
   const scope = isTeam ? 'team' : 'own';
   try{
-    const [rapRes, planRes] = await Promise.all([
+    const [rapRes, planRes, leadsRes] = await Promise.all([
       apiFetch('/prospection/rapports?scope='+scope+'&du='+ymd(lundi)+'&au='+ymd(dimanche)),
       apiFetch('/prospection/planning?scope='+scope+'&semaine='+encodeURIComponent(semaine)),
+      isTeam ? apiFetch('/leads') : Promise.resolve({leads:[]}),
     ]);
-    renderResumeHebdo(rapRes.rapports||[], planRes.planning||[]);
+    renderResumeHebdo(rapRes.rapports||[], planRes.planning||[], leadsRes.leads||[]);
   }catch(e){
     toast(e.message||'Erreur de chargement.','danger');
     document.getElementById('resumeCartes').innerHTML = '';
   }
 }
 
-function renderResumeHebdo(rapports, planning){
+function renderResumeHebdo(rapports, planning, leads){
+  leads = leads || [];
   const parComm = {};
   rapports.forEach(r=>{
     if(!parComm[r.commercial]) parComm[r.commercial] = { rapports:0, contacts:0, appels:0, physique:0, rdv:0, chantier:0, repondu:0, promesses:0, parType:{F2:0,F3:0,F4:0,Plusieurs:0,Aucun:0} };
@@ -2915,6 +2985,22 @@ function renderResumeHebdo(rapports, planning){
   planning.forEach(p=>{
     if(!parComm[p.commercial]) parComm[p.commercial] = { rapports:0, contacts:0, appels:0, physique:0, rdv:0, chantier:0, repondu:0, promesses:0, parType:{F2:0,F3:0,F4:0,Plusieurs:0,Aucun:0} };
     parComm[p.commercial].planning = p.jours;
+  });
+  // Répartition des leads publicitaires par commercial (compte rendu — situation
+  // à ce jour, indépendante de la semaine affichée puisqu'un lead reste attribué
+  // dans la durée, pas seulement le jour où il a été reçu).
+  const parCommLeads = {};
+  leads.forEach(l=>{
+    const nom = l.prisEnChargePar;
+    if(!nom) return; // non attribué — pas rattachable à un commercial précis ici
+    if(!parCommLeads[nom]) parCommLeads[nom] = { attribues:0, contactes:0, convertis:0, perdus:0 };
+    parCommLeads[nom].attribues++;
+    if(l.statut==='Contacté') parCommLeads[nom].contactes++;
+    else if(l.statut==='Converti') parCommLeads[nom].convertis++;
+    else if(l.statut==='Perdu') parCommLeads[nom].perdus++;
+  });
+  Object.keys(parCommLeads).forEach(nom=>{
+    if(!parComm[nom]) parComm[nom] = { rapports:0, contacts:0, appels:0, physique:0, rdv:0, chantier:0, repondu:0, promesses:0, parType:{F2:0,F3:0,F4:0,Plusieurs:0,Aucun:0} };
   });
 
   const noms = Object.keys(parComm).sort();
@@ -2942,6 +3028,15 @@ function renderResumeHebdo(rapports, planning){
           kpiSmall('🤝 Promesses', c.promesses, '#1a7a4a')+
         '</div>'+
         '<div style="font-size:12px;color:var(--gray);margin-top:6px">Intérêts marqués — F2: <strong>'+c.parType.F2+'</strong> · F3: <strong>'+c.parType.F3+'</strong> · F4: <strong>'+c.parType.F4+'</strong> · Plusieurs: <strong>'+c.parType.Plusieurs+'</strong> · Aucun: <strong>'+c.parType.Aucun+'</strong></div>'+
+        (parCommLeads[nom] ? '<div style="margin-top:12px;padding-top:12px;border-top:1px dashed #ddd">'+
+          '<div style="font-size:11px;font-weight:700;color:#00294d;text-transform:uppercase;letter-spacing:.3px;margin-bottom:8px">🎯 Leads publicitaires (situation à ce jour)</div>'+
+          '<div class="kpi-row">'+
+            kpiSmall('Attribués', parCommLeads[nom].attribues, '#00294d')+
+            kpiSmall('📞 Contactés', parCommLeads[nom].contactes, '#b8860b')+
+            kpiSmall('✅ Convertis', parCommLeads[nom].convertis, '#1a7a4a')+
+            kpiSmall('✗ Perdus', parCommLeads[nom].perdus, '#a32d2d')+
+          '</div>'+
+        '</div>' : '')+
       '</div></div>';
   }).join('');
 }
