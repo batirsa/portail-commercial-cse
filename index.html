@@ -1391,10 +1391,32 @@ function renderLeads(){
             <option value="">Attribuer à...</option>
             ${EQUIPE_COMMERCIALE.map(m=>`<option value="${m.agentName}">${m.agentName}</option>`).join('')}
           </select>` : ''}
+          <button class="btn btn-sm btn-outline" onclick="toggleCompteRenduLead('${l.id}')" title="Compte rendu du contact">📝${l.compteRendu?' ✓':''}</button>
           <button class="btn btn-sm btn-danger" onclick="supprimerLead('${l.id}')" title="Supprimer" style="margin-left:3px">🗑</button>
         </td>
-      </tr>`;
+      </tr>
+      <tr id="crLeadRow_${l.id}" style="display:none"><td colspan="12" style="background:#f7f8fa;padding:12px 16px">
+        <label style="font-size:11px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.3px">📝 Compte rendu — échange avec ${l.nom}</label>
+        <textarea id="crLeadTxt_${l.id}" rows="3" placeholder="Ce qui a été dit, résultat de l'échange, prochaine étape..." style="width:100%;margin-top:6px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:inherit">${l.compteRendu||''}</textarea>
+        <button class="btn btn-sm btn-navy" style="margin-top:8px" onclick="sauvegarderCompteRenduLead('${l.id}')">💾 Enregistrer le compte rendu</button>
+      </td></tr>`;
     }).join('') + '</tbody>';
+}
+
+function toggleCompteRenduLead(id){
+  const row = document.getElementById('crLeadRow_'+id);
+  if(row) row.style.display = row.style.display==='none' ? 'table-row' : 'none';
+}
+
+async function sauvegarderCompteRenduLead(id){
+  const txt = (document.getElementById('crLeadTxt_'+id)||{}).value || '';
+  try{
+    await apiFetch('/leads/'+encodeURIComponent(id), { method:'PUT', body: JSON.stringify({ compteRendu: txt }) });
+    const l = LEADS.find(x=>x.id===id); if(l) l.compteRendu = txt;
+    toast('✅ Compte rendu enregistré.','success');
+  }catch(e){
+    toast(e.message || 'Erreur.', 'danger');
+  }
 }
 
 async function attribuerLead(id, agentName){
@@ -1745,12 +1767,13 @@ function renderLeadsDashboard(leads){
         </tr>
         <tr id="dashLeadsDetail${i}" style="display:none"><td colspan="3" style="padding:0;background:#f7f8fa">
           <table style="width:100%;font-size:12px">
-            <thead><tr><th>Nom</th><th>Contact</th><th>Statut</th><th>Reçu le</th></tr></thead>
+            <thead><tr><th>Nom</th><th>Contact</th><th>Statut</th><th>Reçu le</th><th>Compte rendu</th></tr></thead>
             <tbody>${parComm[nom].map(l=>`<tr>
               <td>${l.nom}</td>
               <td>📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
               <td>${l.statut||'—'}</td>
               <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
+              <td style="max-width:260px;white-space:pre-wrap;color:${l.compteRendu?'#333':'var(--gray)'}">${l.compteRendu || '—'}</td>
             </tr>`).join('')}</tbody>
           </table>
         </td></tr>
