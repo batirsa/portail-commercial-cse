@@ -751,7 +751,7 @@ textarea{resize:vertical;min-height:70px}
     <div class="modal-body">
       <div class="form-grid">
         <div class="form-group"><label>Nom du prospect *</label><input id="p_nom" placeholder="ex: Jean Kouassi"></div>
-        <div class="form-group"><label>Contact</label><input id="p_contact" placeholder="0700000000"></div>
+        <div class="form-group"><label>Contact *</label><input id="p_contact" placeholder="0700000000"></div>
         <div class="form-group"><label>Type de prospection *</label>
           <select id="p_type">
             <option value="Téléphonique">📞 Téléphonique</option>
@@ -773,7 +773,7 @@ textarea{resize:vertical;min-height:70px}
             <option value="Plusieurs">Plusieurs types</option>
           </select>
         </div>
-        <div class="form-group full"><label>Résumé de l'échange</label><textarea id="p_resume" rows="2" placeholder="Points discutés..."></textarea></div>
+        <div class="form-group full"><label>Résumé de l'échange (compte rendu) *</label><textarea id="p_resume" rows="2" placeholder="Points discutés..."></textarea></div>
         <div class="form-group"><label>Objection principale</label><input id="p_objection" placeholder="ex: Prix trop élevé"></div>
         <div class="form-group"><label>Promesse de souscription ?</label>
           <select id="p_promesse" onchange="toggleFormPromesse()"><option value="non">Non</option><option value="oui">Oui</option></select>
@@ -2927,16 +2927,20 @@ function toggleFormPromesse(){
 function ajouterProspect(){
   const nom = document.getElementById('p_nom').value.trim();
   if(!nom){ toast('Le nom du prospect est obligatoire.','danger'); return; }
+  const contact = document.getElementById('p_contact').value.trim();
+  if(!contact){ toast('Le contact du prospect est obligatoire.','danger'); return; }
+  const resume = document.getElementById('p_resume').value.trim();
+  if(!resume){ toast('Le compte rendu (résumé de l\'échange) est obligatoire.','danger'); return; }
   const promesse = document.getElementById('p_promesse').value;
   if(promesse==='oui' && !document.getElementById('p_delai').value){
     toast('Merci d\'indiquer le délai prévu pour cette promesse.','danger'); return;
   }
   _prospectsJour.push({
     nom: nom,
-    contact: document.getElementById('p_contact').value,
+    contact: contact,
     type: document.getElementById('p_type').value,
     heure: document.getElementById('p_heure').value,
-    resume: document.getElementById('p_resume').value,
+    resume: resume,
     aRepondu: document.getElementById('p_repondu').value,
     interet: document.getElementById('p_interet').value,
     objection: document.getElementById('p_objection').value,
@@ -3061,10 +3065,28 @@ function renderResumeHebdo(rapports, planning, leads, lundi){
         '</table>'+
       '</div>'
     ) : '';
+    // Objectifs standards de l'agence, fixes par semaine (indépendants du
+    // nombre de jours effectivement rapportés) : 10 appels/jour et 3 RDV
+    // client/jour sur une semaine de 5 jours ouvrés, et au moins 3 visites
+    // chantier sur la semaine entière.
+    const OBJ_APPELS_SEMAINE = 50;   // 10 × 5 jours
+    const OBJ_RDV_SEMAINE = 15;      // 3 × 5 jours
+    const OBJ_CHANTIER_SEMAINE = 3;
+    const okAppels = c.appels >= OBJ_APPELS_SEMAINE;
+    const okRdv = c.rdv >= OBJ_RDV_SEMAINE;
+    const okChantier = c.chantier >= OBJ_CHANTIER_SEMAINE;
+    const chipObj = (lbl,val,obj,ok) => '<span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:99px;font-size:11px;font-weight:700;background:'+(ok?'#e8f5ee':'#fceaea')+';color:'+(ok?'#1a7a4a':'#a32d2d')+'">'+(ok?'✅':'⚠️')+' '+lbl+' '+val+'/'+obj+'</span>';
+    const objectifsBadges =
+      '<div style="margin-bottom:12px;display:flex;gap:8px;flex-wrap:wrap">'+
+        chipObj('Appels', c.appels, OBJ_APPELS_SEMAINE, okAppels)+
+        chipObj('RDV', c.rdv, OBJ_RDV_SEMAINE, okRdv)+
+        chipObj('Chantier', c.chantier, OBJ_CHANTIER_SEMAINE, okChantier)+
+      '</div>';
     return '<div class="card" style="margin-bottom:14px;border:1.5px solid var(--border)">'+
       '<div class="card-header" style="background:#f7f8fa"><div class="card-title" style="font-size:14px">👤 '+nom+'</div></div>'+
       '<div class="card-body" style="padding:14px 18px">'+
         planningTable+
+        objectifsBadges+
         '<div class="kpi-row" style="margin-bottom:4px">'+
           kpiSmall('Rapports remplis', c.rapports, '#00294d')+
           kpiSmall('Contacts totaux', c.contacts, '#00294d')+
