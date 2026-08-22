@@ -3022,8 +3022,9 @@ function renderResumeHebdo(rapports, planning, leads){
   leads.forEach(l=>{
     const nom = l.prisEnChargePar;
     if(!nom) return; // non attribué — pas rattachable à un commercial précis ici
-    if(!parCommLeads[nom]) parCommLeads[nom] = { attribues:0, contactes:0, convertis:0, perdus:0 };
+    if(!parCommLeads[nom]) parCommLeads[nom] = { attribues:0, contactes:0, convertis:0, perdus:0, liste:[] };
     parCommLeads[nom].attribues++;
+    parCommLeads[nom].liste.push(l);
     if(l.statut==='Contacté') parCommLeads[nom].contactes++;
     else if(l.statut==='Converti') parCommLeads[nom].convertis++;
     else if(l.statut==='Perdu') parCommLeads[nom].perdus++;
@@ -3065,6 +3066,17 @@ function renderResumeHebdo(rapports, planning, leads){
             kpiSmall('✅ Convertis', parCommLeads[nom].convertis, '#1a7a4a')+
             kpiSmall('✗ Perdus', parCommLeads[nom].perdus, '#a32d2d')+
           '</div>'+
+          '<table style="width:100%;font-size:12px;margin-top:10px;border-collapse:collapse">'+
+            '<thead><tr style="color:var(--gray);text-align:left;border-bottom:1px solid #eee"><th style="padding:4px 6px">Nom</th><th style="padding:4px 6px">Contact</th><th style="padding:4px 6px">Statut</th><th style="padding:4px 6px">Compte rendu</th></tr></thead>'+
+            '<tbody>'+parCommLeads[nom].liste.map(l=>
+              '<tr style="border-bottom:1px solid #f2f2f2">'+
+                '<td style="padding:4px 6px"><strong>'+l.nom+'</strong></td>'+
+                '<td style="padding:4px 6px;white-space:nowrap">📞 '+l.contact+(l.whatsapp?'<br>💬 '+l.whatsapp:'')+'</td>'+
+                '<td style="padding:4px 6px">'+(l.statut||'—')+'</td>'+
+                '<td style="padding:4px 6px;white-space:pre-wrap;color:'+(l.compteRendu?'#333':'var(--gray)')+'">'+(l.compteRendu||'—')+'</td>'+
+              '</tr>'
+            ).join('')+'</tbody>'+
+          '</table>'+
         '</div>' : '')+
       '</div></div>';
   }).join('');
