@@ -2986,14 +2986,14 @@ async function chargerResumeHebdo(){
       apiFetch('/prospection/planning?scope='+scope+'&semaine='+encodeURIComponent(semaine)),
       apiFetch('/leads'), // le serveur limite déjà un commercial à ses propres leads
     ]);
-    renderResumeHebdo(rapRes.rapports||[], planRes.planning||[], leadsRes.leads||[]);
+    renderResumeHebdo(rapRes.rapports||[], planRes.planning||[], leadsRes.leads||[], lundi);
   }catch(e){
     toast(e.message||'Erreur de chargement.','danger');
     document.getElementById('resumeCartes').innerHTML = '';
   }
 }
 
-function renderResumeHebdo(rapports, planning, leads){
+function renderResumeHebdo(rapports, planning, leads, lundi){
   leads = leads || [];
   const parComm = {};
   rapports.forEach(r=>{
@@ -3042,11 +3042,29 @@ function renderResumeHebdo(rapports, planning, leads){
   cont.innerHTML = noms.map(nom=>{
     const c = parComm[nom];
     const tauxRep = c.contacts ? Math.round(c.repondu/c.contacts*100) : 0;
-    const objectifs = c.planning ? Object.values(c.planning).map(j=>j.objectif).filter(Boolean).join(' · ') : '';
+    const planningTable = (c.planning && Object.values(c.planning).some(j=>j.zone||j.objectif)) ? (
+      '<div style="margin-bottom:12px">'+
+        '<div style="font-size:11px;font-weight:700;color:#00294d;text-transform:uppercase;letter-spacing:.3px;margin-bottom:6px">📆 Planning de la semaine</div>'+
+        '<table style="width:100%;font-size:12px;border-collapse:collapse">'+
+          '<thead><tr style="color:var(--gray);text-align:left;border-bottom:1px solid #eee"><th style="padding:4px 6px">Jour</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Zone / Secteur</th><th style="padding:4px 6px">Objectif</th></tr></thead>'+
+          '<tbody>'+JOURS_SEMAINE.map((j,i)=>{
+            const v = (c.planning && c.planning[j]) || {};
+            if(!v.zone && !v.objectif) return '';
+            const d = new Date(lundi); d.setDate(d.getDate()+i);
+            return '<tr style="border-bottom:1px solid #f2f2f2">'+
+              '<td style="padding:4px 6px"><strong>'+j+'</strong></td>'+
+              '<td style="padding:4px 6px;color:var(--gray);white-space:nowrap">'+d.toLocaleDateString('fr-FR',{day:'2-digit',month:'short'})+'</td>'+
+              '<td style="padding:4px 6px">'+(v.zone||'—')+'</td>'+
+              '<td style="padding:4px 6px">'+(v.objectif||'—')+'</td>'+
+            '</tr>';
+          }).join('')+'</tbody>'+
+        '</table>'+
+      '</div>'
+    ) : '';
     return '<div class="card" style="margin-bottom:14px;border:1.5px solid var(--border)">'+
       '<div class="card-header" style="background:#f7f8fa"><div class="card-title" style="font-size:14px">👤 '+nom+'</div></div>'+
       '<div class="card-body" style="padding:14px 18px">'+
-        (objectifs ? '<div class="form-hint" style="margin-bottom:10px"><strong>Objectifs de la semaine :</strong> '+objectifs+'</div>' : '')+
+        planningTable+
         '<div class="kpi-row" style="margin-bottom:4px">'+
           kpiSmall('Rapports remplis', c.rapports, '#00294d')+
           kpiSmall('Contacts totaux', c.contacts, '#00294d')+
