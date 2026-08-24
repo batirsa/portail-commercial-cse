@@ -327,6 +327,38 @@ textarea{resize:vertical;min-height:70px}
             <div class="form-group full"><label id="lbl_f_nom">Nom & Prénoms *</label><input id="f_nom" placeholder="NOM Prénom(s)"></div>
           </div>
 
+          <div class="form-grid" id="wrap_particulierToggles">
+            <div class="form-group full" style="margin-bottom:0">
+              <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
+                <input type="checkbox" id="f_conjointToggle" onchange="toggleConjoint()" style="width:auto">
+                👥 Souscription conjointe (Mr & Mme / co-souscripteur)
+              </label>
+            </div>
+            <div class="form-group full" style="margin-bottom:0">
+              <label style="display:flex;align-items:center;gap:8px;font-weight:600;cursor:pointer">
+                <input type="checkbox" id="f_mineurToggle" onchange="toggleMineur()" style="width:auto">
+                👶 Le souscripteur est mineur — représenté par un tuteur légal
+              </label>
+            </div>
+          </div>
+
+          <div class="form-grid" id="wrap_conjoint" style="display:none;background:#f7f8fa;border-radius:8px;padding:14px;margin-top:8px">
+            <div class="form-group full" style="margin-bottom:6px"><strong style="font-size:12px;color:#00294d">CO-SOUSCRIPTEUR (époux / épouse)</strong></div>
+            <div class="form-group full"><label>Nom & Prénoms du co-souscripteur *</label><input id="f_conjointNom" placeholder="NOM Prénom(s)"></div>
+            <div class="form-group"><label>Date de naissance</label><input id="f_conjointDateNaiss" type="date"></div>
+            <div class="form-group"><label>CNI / Passeport N°</label><input id="f_conjointCni" placeholder="CI000000000"></div>
+            <div class="form-group"><label>Profession</label><input id="f_conjointProfession" placeholder="Ingénieur, Médecin..."></div>
+            <div class="form-group"><label>Téléphone</label><input id="f_conjointTel" placeholder="+225 07 00 00 00 00"></div>
+          </div>
+
+          <div class="form-grid" id="wrap_mineur" style="display:none;background:#f7f8fa;border-radius:8px;padding:14px;margin-top:8px">
+            <div class="form-group full" style="margin-bottom:6px"><strong style="font-size:12px;color:#00294d">REPRÉSENTANT LÉGAL (parent / tuteur du souscripteur mineur)</strong></div>
+            <div class="form-group"><label>Nom & Prénoms du représentant *</label><input id="f_repLegalNom" placeholder="NOM Prénom(s)"></div>
+            <div class="form-group"><label>Lien de parenté</label><input id="f_repLegalLien" placeholder="Père, Mère, Tuteur..."></div>
+            <div class="form-group"><label>CNI / Passeport N° du représentant</label><input id="f_repLegalCni" placeholder="CI000000000"></div>
+            <div class="form-group"><label>Téléphone du représentant</label><input id="f_repLegalTel" placeholder="+225 07 00 00 00 00"></div>
+          </div>
+
           <div class="form-grid" id="wrap_particulier">
             <div class="form-group"><label>Date de naissance</label><input id="f_dateNaiss" type="date"></div>
             <div class="form-group"><label>Lieu de naissance</label><input id="f_lieuNaiss" placeholder="Abidjan"></div>
@@ -1916,7 +1948,13 @@ function resetForm(){
   ['f_gestionnaire','f_domiciliation',
    'f_nom','f_lieuNaiss','f_cni','f_tel','f_email','f_profession','f_employeur',
    'f_adresseEmp','f_commune','f_contactAbsence','f_porte','f_ilot','f_lot','f_etage','f_stockId',
-   'f_prixLettres','f_obs','f_rccm','f_secteurActivite','f_siegeSocial','f_representantNom','f_representantFonction'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+   'f_prixLettres','f_obs','f_rccm','f_secteurActivite','f_siegeSocial','f_representantNom','f_representantFonction',
+   'f_conjointNom','f_conjointDateNaiss','f_conjointCni','f_conjointProfession','f_conjointTel',
+   'f_repLegalNom','f_repLegalLien','f_repLegalCni','f_repLegalTel'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('f_conjointToggle').checked = false;
+  document.getElementById('f_mineurToggle').checked = false;
+  toggleConjoint();
+  toggleMineur();
   document.getElementById('f_typeSouscripteur').value = 'particulier';
   toggleTypeSouscripteur();
   document.getElementById('apptChoisi').style.display='none';
@@ -1954,12 +1992,27 @@ function toggleTypeSouscripteur(){
   const estEntreprise = t === 'entreprise';
   document.getElementById('wrap_particulier').style.display = estEntreprise ? 'none' : 'grid';
   document.getElementById('wrap_entreprise').style.display = estEntreprise ? 'grid' : 'none';
+  document.getElementById('wrap_particulierToggles').style.display = estEntreprise ? 'none' : 'grid';
+  if(estEntreprise){
+    document.getElementById('f_conjointToggle').checked = false;
+    document.getElementById('f_mineurToggle').checked = false;
+    document.getElementById('wrap_conjoint').style.display = 'none';
+    document.getElementById('wrap_mineur').style.display = 'none';
+  }
   document.getElementById('lbl_f_nom').textContent = estEntreprise ? 'Raison sociale *' : 'Nom & Prénoms *';
   document.getElementById('f_nom').placeholder = estEntreprise ? 'ex: BÂTIR DISTRIBUTION SARL' : 'NOM Prénom(s)';
   document.getElementById('lbl_f_cni').textContent = estEntreprise ? 'CNI / Passeport du représentant' : 'CNI / Passeport N°';
   document.getElementById('lbl_f_pieceId').textContent = estEntreprise
     ? "Pièce d'identité du représentant (image ou PDF)"
     : "Pièce d'identité (CNI / Passeport — image ou PDF)";
+}
+
+function toggleConjoint(){
+  document.getElementById('wrap_conjoint').style.display = document.getElementById('f_conjointToggle').checked ? 'grid' : 'none';
+}
+
+function toggleMineur(){
+  document.getElementById('wrap_mineur').style.display = document.getElementById('f_mineurToggle').checked ? 'grid' : 'none';
 }
 
 function typeChange(){
@@ -2411,6 +2464,10 @@ async function sauvegarder(){
     if(!document.getElementById('f_rccm').value.trim()){ toast('Le N° RCCM est obligatoire pour une entreprise.','danger'); return; }
     if(!document.getElementById('f_representantNom').value.trim()){ toast('Le nom du représentant légal est obligatoire.','danger'); return; }
   }
+  const conjoint = document.getElementById('f_conjointToggle').checked;
+  if(conjoint && !document.getElementById('f_conjointNom').value.trim()){ toast('Le nom du co-souscripteur est obligatoire.','danger'); return; }
+  const mineur = document.getElementById('f_mineurToggle').checked;
+  if(mineur && !document.getElementById('f_repLegalNom').value.trim()){ toast('Le nom du représentant légal (parent/tuteur) est obligatoire.','danger'); return; }
   const commercial=document.getElementById('f_commercial').value;
   if(!commercial){ toast('Le commercial est obligatoire.','danger'); return; }
   const prix=parseFloat(document.getElementById('f_prix').value)||0;
@@ -2443,6 +2500,16 @@ async function sauvegarder(){
     adresseEmp:     document.getElementById('f_adresseEmp').value,
     commune:        document.getElementById('f_commune').value,
     contactAbsence: document.getElementById('f_contactAbsence').value,
+    conjointNom:            conjoint ? document.getElementById('f_conjointNom').value : '',
+    conjointDateNaiss:      conjoint && document.getElementById('f_conjointDateNaiss').value ? new Date(document.getElementById('f_conjointDateNaiss').value).toLocaleDateString('fr-FR') : '',
+    conjointCni:            conjoint ? document.getElementById('f_conjointCni').value : '',
+    conjointProfession:     conjoint ? document.getElementById('f_conjointProfession').value : '',
+    conjointTel:            conjoint ? document.getElementById('f_conjointTel').value : '',
+    estMineur:               mineur,
+    repLegalNom:             mineur ? document.getElementById('f_repLegalNom').value : '',
+    repLegalLien:            mineur ? document.getElementById('f_repLegalLien').value : '',
+    repLegalCni:             mineur ? document.getElementById('f_repLegalCni').value : '',
+    repLegalTel:             mineur ? document.getElementById('f_repLegalTel').value : '',
     rccm:                 document.getElementById('f_rccm').value,
     secteurActivite:      document.getElementById('f_secteurActivite').value,
     siegeSocial:          document.getElementById('f_siegeSocial').value,
@@ -2516,9 +2583,22 @@ function editerClient(id){
   document.getElementById('f_siegeSocial').value=c.siegeSocial||'';
   document.getElementById('f_representantNom').value=c.representantNom||'';
   document.getElementById('f_representantFonction').value=c.representantFonction||'';
+  document.getElementById('f_conjointToggle').checked = !!c.conjointNom;
+  toggleConjoint();
+  document.getElementById('f_conjointNom').value=c.conjointNom||'';
+  document.getElementById('f_conjointCni').value=c.conjointCni||'';
+  document.getElementById('f_conjointProfession').value=c.conjointProfession||'';
+  document.getElementById('f_conjointTel').value=c.conjointTel||'';
+  document.getElementById('f_mineurToggle').checked = !!c.estMineur;
+  toggleMineur();
+  document.getElementById('f_repLegalNom').value=c.repLegalNom||'';
+  document.getElementById('f_repLegalLien').value=c.repLegalLien||'';
+  document.getElementById('f_repLegalCni').value=c.repLegalCni||'';
+  document.getElementById('f_repLegalTel').value=c.repLegalTel||'';
   // Reconvertir les dates FR en ISO pour les inputs date
   const toISO=fr=>{ if(!fr) return ''; const [d,m,y]=fr.split('/'); return y&&m&&d?`${y}-${m}-${d}`:''; };
   document.getElementById('f_dateNaiss').value=toISO(c.dateNaiss);
+  document.getElementById('f_conjointDateNaiss').value=toISO(c.conjointDateNaiss);
   document.getElementById('f_lieuNaiss').value=c.lieuNaiss||'';
   document.getElementById('f_nationalite').value=c.nationalite||'Ivoirienne';
   document.getElementById('f_cni').value=c.cni||'';
@@ -3268,6 +3348,23 @@ function voirFiche(id){
       <div class="fiche-item"><div class="fiche-label">Téléphone</div><div class="fiche-value">${c.tel||'—'}</div></div>
       <div class="fiche-item"><div class="fiche-label">Email</div><div class="fiche-value">${c.email||'—'}</div></div>
     </div>
+    ${c.conjointNom ? `
+    <div style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;margin-top:14px">👥 Co-souscripteur (époux / épouse)</div>
+    <div class="fiche-grid">
+      <div class="fiche-item"><div class="fiche-label">Nom & Prénoms</div><div class="fiche-value">${c.conjointNom}</div></div>
+      <div class="fiche-item"><div class="fiche-label">Date de naissance</div><div class="fiche-value">${c.conjointDateNaiss||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">CNI N°</div><div class="fiche-value">${c.conjointCni||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">Profession</div><div class="fiche-value">${c.conjointProfession||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">Téléphone</div><div class="fiche-value">${c.conjointTel||'—'}</div></div>
+    </div>` : ''}
+    ${c.estMineur ? `
+    <div style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;margin-top:14px">👶 Souscripteur mineur — Représentant légal</div>
+    <div class="fiche-grid">
+      <div class="fiche-item"><div class="fiche-label">Nom & Prénoms</div><div class="fiche-value">${c.repLegalNom||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">Lien de parenté</div><div class="fiche-value">${c.repLegalLien||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">CNI N°</div><div class="fiche-value">${c.repLegalCni||'—'}</div></div>
+      <div class="fiche-item"><div class="fiche-label">Téléphone</div><div class="fiche-value">${c.repLegalTel||'—'}</div></div>
+    </div>` : ''}
 
     <div style="margin-top:10px">
       ${c.pieceId ? (
@@ -3967,6 +4064,27 @@ function buildPDF(c){
         <tr><td>Commune & quartier de résidence</td><td>${c.commune||'—'}</td></tr>
         <tr><td>Personne à contacter en cas d'absence</td><td>${c.contactAbsence||'—'}</td></tr>
       </table>
+      ${c.conjointNom ? `
+      <h2 style="margin-top:18px">CO-SOUSCRIPTEUR (époux / épouse)</h2>
+      <table class="info-table">
+        <tr><td>Nom & prénoms</td><td>${c.conjointNom}</td></tr>
+        <tr><td>Date de naissance</td><td>${c.conjointDateNaiss||'—'}</td></tr>
+        <tr><td>Pièce d'identité N°</td><td>${c.conjointCni||'—'}</td></tr>
+        <tr><td>Profession</td><td>${c.conjointProfession||'—'}</td></tr>
+        <tr><td>Téléphone</td><td>${c.conjointTel||'—'}</td></tr>
+      </table>
+      <p style="font-size:9.5pt;color:#555;margin-top:6px">Le présent dossier de souscription est conjoint : le co-souscripteur ci-dessus est cotitulaire du bien au même titre que le souscripteur principal.</p>
+      ` : ''}
+      ${c.estMineur ? `
+      <h2 style="margin-top:18px">REPRÉSENTANT LÉGAL (souscripteur mineur)</h2>
+      <table class="info-table">
+        <tr><td>Nom & prénoms</td><td>${c.repLegalNom||'—'}</td></tr>
+        <tr><td>Lien de parenté</td><td>${c.repLegalLien||'—'}</td></tr>
+        <tr><td>Pièce d'identité N°</td><td>${c.repLegalCni||'—'}</td></tr>
+        <tr><td>Téléphone</td><td>${c.repLegalTel||'—'}</td></tr>
+      </table>
+      <p style="font-size:9.5pt;color:#555;margin-top:6px">Le souscripteur désigné ci-dessus étant mineur, le présent dossier est signé et engagé par son représentant légal (parent ou tuteur), qui agit en son nom et pour son compte.</p>
+      ` : ''}
     </div>
     ${footer()}
   </div>`;
