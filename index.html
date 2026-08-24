@@ -3675,6 +3675,23 @@ function genererFicheIdentification(){
         ${champ('Représentant légal — Fonction')}
       </div>
 
+      <div class="section-header">CO-SOUSCRIPTEUR <span style="font-weight:400;text-transform:none;letter-spacing:0">(à remplir si souscription conjointe Mr &amp; Mme — sinon laisser vide)</span></div>
+      <div class="grid2">
+        ${champFull('Nom & Prénoms du co-souscripteur')}
+        ${champ('Date de naissance')}
+        ${champ('N° CNI / Passeport')}
+        ${champ('Profession')}
+        ${champ('Téléphone')}
+      </div>
+
+      <div class="section-header">REPRÉSENTANT LÉGAL <span style="font-weight:400;text-transform:none;letter-spacing:0">(à remplir si le souscripteur est mineur — sinon laisser vide)</span></div>
+      <div class="grid2">
+        ${champFull('Nom & Prénoms du représentant (parent / tuteur)')}
+        ${champ('Lien de parenté')}
+        ${champ('N° CNI / Passeport du représentant')}
+        ${champ('Téléphone du représentant')}
+      </div>
+
       <div class="section-header">CONTACT</div>
       <div class="grid3">
         ${champ('Téléphone')}
