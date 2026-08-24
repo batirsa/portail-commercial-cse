@@ -1962,7 +1962,7 @@ function resetForm(){
   document.getElementById('btnChoisirAppt').disabled = true;
   _apptsSupp = [];
   _prixPrincipalCatalogue = 0;
-  _dernierSuppTotalApplique = 0;
+  _prixUnitaireNegocie = 0;
   document.getElementById('immeubleZone').style.display = 'none';
   renderApptsSupp();
   populerFieldCommercial();
@@ -2041,7 +2041,7 @@ let _stockPickerMode = 'single'; // 'single' (appartement principal) | 'multi' (
 let _stockPickerSelection = new Set();
 let _apptsSupp = [];             // appartements supplémentaires du dossier en cours (achat groupé)
 let _prixPrincipalCatalogue = 0; // prix catalogue de l'appartement principal choisi, pour le recalcul du total
-let _dernierSuppTotalApplique = 0; // dernier sous-total supplémentaire déjà intégré à f_prix (pour un recalcul correct)
+let _prixUnitaireNegocie = 0; // prix unitaire négocié saisi par le commercial pour le calcul du total (achat groupé)
 
 async function ouvrirStockPicker(mode){
   _stockPickerMode = (mode === 'multi') ? 'multi' : 'single';
@@ -2169,10 +2169,11 @@ function renderApptsSupp(){
     wrap.innerHTML = '<div class="form-hint">Aucun appartement supplémentaire — dossier standard à un seul appartement.</div>';
     return;
   }
-  const total = _apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0);
+  const totalCatalogue = _apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0);
+  const nbTotal = 1 + _apptsSupp.length;
   wrap.innerHTML = `
     <div class="table-wrap"><table style="width:100%;font-size:12px">
-      <thead><tr><th>Îlot</th><th>Bât.</th><th>Étage</th><th>Porte</th><th>Type</th><th>Surface</th><th>Prix</th><th></th></tr></thead>
+      <thead><tr><th>Îlot</th><th>Bât.</th><th>Étage</th><th>Porte</th><th>Type</th><th>Surface</th><th>Prix catalogue</th><th></th></tr></thead>
       <tbody>${_apptsSupp.map((a,i)=>`
         <tr>
           <td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td><strong>${a.porte}</strong></td>
@@ -2180,9 +2181,13 @@ function renderApptsSupp(){
           <td><button type="button" class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="retirerApptSupp(${i})" title="Retirer">✕</button></td>
         </tr>`).join('')}</tbody>
     </table></div>
-    <div style="margin-top:8px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
-      <div style="font-size:12px;color:var(--gray)">Sous-total suppléments : <strong>${fmt(total)} F CFA</strong> (${_apptsSupp.length} appartement${_apptsSupp.length>1?'s':''} en plus du principal)</div>
-      <button type="button" class="btn btn-outline btn-sm" onclick="recalculerPrixTotal()">🔄 Recalculer le prix total du dossier</button>
+    <div style="font-size:11px;color:var(--gray);margin-top:6px">Référence catalogue (informatif) : ${fmt(totalCatalogue)} F pour les ${_apptsSupp.length} supplément(s) — le prix réellement facturé se calcule ci-dessous à partir du prix négocié.</div>
+    <div style="margin-top:10px;background:#e8f0f7;border-radius:8px;padding:12px 14px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+      <div class="form-group" style="margin-bottom:0;min-width:220px">
+        <label style="font-size:11px">Prix unitaire négocié (F CFA) <span style="font-weight:400;color:var(--gray)">— appliqué à chacun des ${nbTotal} appartements</span></label>
+        <input id="f_prixUnitaireNegocie" type="number" placeholder="ex: 26500000" value="${_prixUnitaireNegocie||''}" oninput="_prixUnitaireNegocie=this.value">
+      </div>
+      <button type="button" class="btn btn-navy btn-sm" onclick="recalculerPrixTotal()">🔄 Calculer le prix total (${nbTotal} appart.)</button>
     </div>`;
 }
 
@@ -2191,19 +2196,17 @@ function retirerApptSupp(i){
   renderApptsSupp();
 }
 
-// Recalcule le champ "Prix du logement" en additionnant le prix catalogue de
-// l'appartement principal + le sous-total des suppléments — sans écraser un
-// éventuel prix négocié à la main pour la partie "principal + suppléments déjà
-// intégrés lors d'un précédent clic" (on retire d'abord ce qui avait été ajouté
-// la dernière fois, avant de rajouter le nouveau sous-total).
+// Le prix total du dossier se calcule à partir du PRIX UNITAIRE NÉGOCIÉ saisi
+// par le commercial (pas du prix catalogue réel du stock), multiplié par le
+// nombre total d'appartements du dossier (principal + suppléments). C'est le
+// tarif réellement convenu avec le client qui prime, pas la grille catalogue.
 function recalculerPrixTotal(){
-  const suppTotal = _apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0);
-  const actuel = Number(document.getElementById('f_prix').value) || 0;
-  const base = actuel - _dernierSuppTotalApplique;
-  document.getElementById('f_prix').value = base + suppTotal;
-  _dernierSuppTotalApplique = suppTotal;
+  const prixUnitaire = Number(document.getElementById('f_prixUnitaireNegocie').value) || 0;
+  if(!prixUnitaire){ toast('Indique le prix unitaire négocié pour calculer le total.','danger'); return; }
+  const nbTotal = 1 + _apptsSupp.length;
+  document.getElementById('f_prix').value = prixUnitaire * nbTotal;
   calcFinancier();
-  toast('💰 Prix total recalculé (' + (_apptsSupp.length+1) + ' appartement(s)).','success');
+  toast(`💰 Prix total : ${fmt(prixUnitaire)} F × ${nbTotal} appartement(s) = ${fmt(prixUnitaire*nbTotal)} F.`,'success');
 }
 
 // ─── ACHAT D'UN IMMEUBLE ENTIER ───
@@ -2624,8 +2627,8 @@ function editerClient(id){
   document.getElementById('f_lot').value=c.lot||'';
   document.getElementById('f_etage').value=c.etage||'';
   _apptsSupp = Array.isArray(c.appartementsSupp) ? c.appartementsSupp.slice() : [];
-  _prixPrincipalCatalogue = 0; // inconnu en édition — le bouton "Recalculer" se base sur le prix déjà affiché
-  _dernierSuppTotalApplique = 0;
+  _prixPrincipalCatalogue = 0; // inconnu en édition — à recalculer manuellement si besoin
+  _prixUnitaireNegocie = _apptsSupp.length ? Math.round((Number(c.prix)||0) / (1+_apptsSupp.length)) : 0;
   renderApptsSupp();
   if(c.stockId){
     document.getElementById('apptChoisiTitre').textContent = `Îlot ${c.ilot||'—'} · Bâtiment ${c.lot||'—'} · ${c.etage||'—'} · Porte ${c.porte||'—'}`;
