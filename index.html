@@ -448,6 +448,12 @@ textarea{resize:vertical;min-height:70px}
         <div class="form-section">
           <div class="form-section-title">💰 Informations financières</div>
           <div class="form-grid">
+            <div class="form-group full" id="wrap_typePrix">
+              <label>Type de prix <span style="font-weight:400;color:var(--gray)">— pré-remplit le prix ci-dessous, modifiable ensuite pour négocier</span></label>
+              <select id="f_typePrix" onchange="appliquerTypePrix()">
+                <option value="">Choisir une référence de prix...</option>
+              </select>
+            </div>
             <div class="form-group"><label>Prix du logement (F CFA) *</label><input id="f_prix" type="number" oninput="calcFinancier()" placeholder="75000000"></div>
             <div class="form-group"><label>Prix en lettres</label><input id="f_prixLettres" placeholder="Soixante-quinze millions"></div>
             <div class="form-group"><label>Frais de dossier (F CFA)</label><input id="f_frais" type="number" value="200000" oninput="calcFinancier()"></div>
@@ -1963,6 +1969,7 @@ function resetForm(){
   _apptsSupp = [];
   _prixPrincipalCatalogue = 0;
   _prixUnitaireNegocie = 0;
+  majMenuTypePrix();
   document.getElementById('immeubleZone').style.display = 'none';
   renderApptsSupp();
   populerFieldCommercial();
@@ -2032,6 +2039,45 @@ function typeChange(){
   const inf = TYPES[t];
   document.getElementById('f_nbPieces').value = inf.nb;
   document.getElementById('f_surface').value  = inf.surface;
+  majMenuTypePrix();
+  calcFinancier();
+}
+
+// ─── GRILLE DE PRIX DE RÉFÉRENCE (Lancement / CNPS / Actuel) ───
+// Le "Prix actuel" vient toujours du stock réel (catalogue) — pas besoin de le
+// dupliquer ici. Ces deux grilles-ci sont des tarifs fixes indépendants du
+// stock, propres à des offres commerciales spécifiques.
+const PRIX_LANCEMENT = { F2: 27500000, F3: 37500000, F4: 49500000 }; // ancien prix
+const PRIX_CNPS = { F3: [26500000, 27500000], F4: [33000000, 34500000] }; // pas de F2 en CNPS
+
+// Remplit le menu "Type de prix" avec les références disponibles pour le type
+// d'appartement actuellement sélectionné (F2/F3/F4) — le "Prix actuel" utilise
+// le prix catalogue de l'appartement déjà choisi dans le stock, s'il y en a un.
+function majMenuTypePrix(){
+  const sel = document.getElementById('f_typePrix');
+  if(!sel) return;
+  const t = document.getElementById('f_type').value;
+  const options = ['<option value="">Choisir une référence de prix...</option>'];
+  if(_prixPrincipalCatalogue){
+    options.push(`<option value="${_prixPrincipalCatalogue}">Prix actuel (stock) — ${fmt(_prixPrincipalCatalogue)} F</option>`);
+  }
+  if(t && PRIX_LANCEMENT[t]){
+    options.push(`<option value="${PRIX_LANCEMENT[t]}">Prix de lancement (ancien prix) — ${fmt(PRIX_LANCEMENT[t])} F</option>`);
+  }
+  if(t && PRIX_CNPS[t]){
+    PRIX_CNPS[t].forEach((p,i)=>{
+      options.push(`<option value="${p}">Prix CNPS — Option ${i+1} — ${fmt(p)} F</option>`);
+    });
+  }
+  sel.innerHTML = options.join('');
+}
+
+// Applique le prix de référence choisi au champ Prix du logement — reste
+// ensuite librement modifiable pour négocier une réduction.
+function appliquerTypePrix(){
+  const sel = document.getElementById('f_typePrix');
+  if(!sel || !sel.value) return;
+  document.getElementById('f_prix').value = sel.value;
   calcFinancier();
 }
 
@@ -2324,6 +2370,7 @@ function ajouterImmeubleEntier(ilot, numImm){
     document.getElementById('f_surface').value = principal.superf;
     if(!document.getElementById('f_prix').value) document.getElementById('f_prix').value = principal.prix;
     _prixPrincipalCatalogue = principal.prix;
+    majMenuTypePrix();
     document.getElementById('apptChoisiTitre').textContent = `Îlot ${principal.ilot} · Bâtiment ${principal.bat} · ${principal.etage} · Porte ${principal.appt}`;
     document.getElementById('apptChoisiDetail').textContent = `${principal.type} · ${principal.superf} m² · ${fmt(principal.prix)} F CFA${principal.position?' · '+principal.position:''}`;
     document.getElementById('apptChoisi').style.display = 'block';
@@ -2352,6 +2399,7 @@ function choisirAppartement(id){
   document.getElementById('f_surface').value = a.superf;
   if(!document.getElementById('f_prix').value) document.getElementById('f_prix').value = a.prix;
   _prixPrincipalCatalogue = a.prix;
+  majMenuTypePrix();
   document.getElementById('apptChoisiTitre').textContent = `Îlot ${a.ilot} · Bâtiment ${a.bat} · ${a.etage} · Porte ${a.appt}`;
   document.getElementById('apptChoisiDetail').textContent = `${a.type} · ${a.superf} m² · ${fmt(a.prix)} F CFA${a.position?' · '+a.position:''}`;
   document.getElementById('apptChoisi').style.display = 'block';
@@ -2619,6 +2667,7 @@ function editerClient(id){
   afficherApercuPieceId();
   document.getElementById('f_type').value=c.type||'';
   document.getElementById('btnChoisirAppt').disabled = !c.type;
+  majMenuTypePrix();
   if(c.type && TYPES[c.type]){ document.getElementById('f_nbPieces').value=TYPES[c.type].nb; }
   document.getElementById('f_surface').value = c.surface || (c.type && TYPES[c.type] ? TYPES[c.type].surface : '');
   document.getElementById('f_stockId').value=c.stockId||'';
