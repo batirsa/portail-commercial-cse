@@ -2227,10 +2227,10 @@ function renderApptsSupp(){
           <td><button type="button" class="btn btn-outline btn-sm" style="color:var(--danger);border-color:var(--danger)" onclick="retirerApptSupp(${i})" title="Retirer">✕</button></td>
         </tr>`).join('')}</tbody>
     </table></div>
-    <div style="font-size:11px;color:var(--gray);margin-top:6px">Référence catalogue (informatif) : ${fmt(totalCatalogue)} F pour les ${_apptsSupp.length} supplément(s) — le prix réellement facturé se calcule ci-dessous à partir du prix négocié.</div>
+    <div style="font-size:11px;color:var(--gray);margin-top:6px">Référence catalogue (informatif) : ${fmt(totalCatalogue)} F pour les ${_apptsSupp.length} supplément(s) — le prix réellement facturé se calcule ci-dessous à partir du prix unitaire choisi.</div>
     <div style="margin-top:10px;background:#e8f0f7;border-radius:8px;padding:12px 14px;display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
       <div class="form-group" style="margin-bottom:0;min-width:220px">
-        <label style="font-size:11px">Prix unitaire négocié (F CFA) <span style="font-weight:400;color:var(--gray)">— appliqué à chacun des ${nbTotal} appartements</span></label>
+        <label style="font-size:11px">Prix unitaire (F CFA) <span style="font-weight:400;color:var(--gray)">— appliqué à chacun des ${nbTotal} appartements</span></label>
         <input id="f_prixUnitaireNegocie" type="number" placeholder="ex: 26500000" value="${_prixUnitaireNegocie||''}" oninput="_prixUnitaireNegocie=this.value">
       </div>
       <button type="button" class="btn btn-navy btn-sm" onclick="recalculerPrixTotal()">🔄 Calculer le prix total (${nbTotal} appart.)</button>
@@ -2248,7 +2248,7 @@ function retirerApptSupp(i){
 // tarif réellement convenu avec le client qui prime, pas la grille catalogue.
 function recalculerPrixTotal(){
   const prixUnitaire = Number(document.getElementById('f_prixUnitaireNegocie').value) || 0;
-  if(!prixUnitaire){ toast('Indique le prix unitaire négocié pour calculer le total.','danger'); return; }
+  if(!prixUnitaire){ toast('Indique le prix unitaire pour calculer le total.','danger'); return; }
   const nbTotal = 1 + _apptsSupp.length;
   document.getElementById('f_prix').value = prixUnitaire * nbTotal;
   calcFinancier();
@@ -3989,9 +3989,9 @@ function buildPDF(c){
     ${header(dossier)}
     <div class="body">
       <h2>ANNEXE — LISTE DES APPARTEMENTS DU DOSSIER</h2>
-      <p>Le présent dossier de souscription N° <strong>${dossier}</strong>, au nom de <strong>${c.nom||''}</strong>, porte sur l'ensemble des <strong>${nbApptsAnnexe} appartements</strong> ci-dessous, formant un achat groupé unique, au prix unitaire négocié de <strong>${fmt2(prixUnitaireAnnexe)} F CFA</strong> par appartement.</p>
+      <p>Le présent dossier de souscription N° <strong>${dossier}</strong>, au nom de <strong>${c.nom||''}</strong>, porte sur l'ensemble des <strong>${nbApptsAnnexe} appartements</strong> ci-dessous, formant un achat groupé unique, au prix unitaire de <strong>${fmt2(prixUnitaireAnnexe)} F CFA</strong> par appartement.</p>
       <table class="echeancier-table" style="margin-top:14px">
-        <thead><tr><th>#</th><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix unitaire négocié</th></tr></thead>
+        <thead><tr><th>#</th><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix unitaire</th></tr></thead>
         <tbody>
           <tr style="font-weight:700"><td>1</td><td>${c.ilot||'—'}</td><td>${c.lot||'—'}</td><td>${c.etage||'—'}</td><td>${c.porte||'—'}</td><td>${c.type||'—'} (principal)</td><td>${inf.surface} m²</td><td>${fmt2(prixUnitaireAnnexe)} F</td></tr>
           ${apptsSupp.map((a,i)=>`<tr><td>${i+2}</td><td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td>${a.porte}</td><td>${a.type}</td><td>${a.surface} m²</td><td>${fmt2(prixUnitaireAnnexe)} F</td></tr>`).join('')}
