@@ -3792,7 +3792,12 @@ function buildPDF(c){
   // liste des appartements en plus du principal, et prix indicatif du principal
   // pour l'annexe (le prix total négocié reste c.prix, déjà utilisé partout ailleurs).
   const apptsSupp = Array.isArray(c.appartementsSupp) ? c.appartementsSupp : [];
-  const prixPrincipalAffiche = apptsSupp.length ? Math.max(0, (Number(c.prix)||0) - apptsSupp.reduce((s,a)=>s+(Number(a.prix)||0),0)) : (c.prix||0);
+  // Prix unitaire uniforme pour l'annexe (achat groupé) : le prix total négocié
+  // du dossier, réparti à parts égales sur chaque appartement — et non plus le
+  // prix catalogue individuel de chacun, pour rester cohérent avec le prix
+  // unitaire négocié saisi par le commercial (qui peut différer du catalogue).
+  const nbApptsAnnexe = 1 + apptsSupp.length;
+  const prixUnitaireAnnexe = apptsSupp.length ? Math.round((Number(c.prix)||0) / nbApptsAnnexe) : (c.prix||0);
 
   function fmt2(n){ return Number(n||0).toLocaleString('fr-FR'); }
   function fmtM2(n){ return (n/1000000).toFixed(3).replace('.',',')+' M'; }
@@ -3930,16 +3935,16 @@ function buildPDF(c){
     ${header(dossier)}
     <div class="body">
       <h2>ANNEXE — LISTE DES APPARTEMENTS DU DOSSIER</h2>
-      <p>Le présent dossier de souscription N° <strong>${dossier}</strong>, au nom de <strong>${c.nom||''}</strong>, porte sur l'ensemble des <strong>${1+apptsSupp.length} appartements</strong> ci-dessous, formant un achat groupé unique.</p>
+      <p>Le présent dossier de souscription N° <strong>${dossier}</strong>, au nom de <strong>${c.nom||''}</strong>, porte sur l'ensemble des <strong>${nbApptsAnnexe} appartements</strong> ci-dessous, formant un achat groupé unique, au prix unitaire négocié de <strong>${fmt2(prixUnitaireAnnexe)} F CFA</strong> par appartement.</p>
       <table class="echeancier-table" style="margin-top:14px">
-        <thead><tr><th>#</th><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix</th></tr></thead>
+        <thead><tr><th>#</th><th>Îlot</th><th>Bâtiment</th><th>Étage</th><th>N° Appt</th><th>Type</th><th>Surface</th><th>Prix unitaire négocié</th></tr></thead>
         <tbody>
-          <tr style="font-weight:700"><td>1</td><td>${c.ilot||'—'}</td><td>${c.lot||'—'}</td><td>${c.etage||'—'}</td><td>${c.porte||'—'}</td><td>${c.type||'—'} (principal)</td><td>${inf.surface} m²</td><td>${fmt2(prixPrincipalAffiche)} F</td></tr>
-          ${apptsSupp.map((a,i)=>`<tr><td>${i+2}</td><td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td>${a.porte}</td><td>${a.type}</td><td>${a.surface} m²</td><td>${fmt2(a.prix)} F</td></tr>`).join('')}
+          <tr style="font-weight:700"><td>1</td><td>${c.ilot||'—'}</td><td>${c.lot||'—'}</td><td>${c.etage||'—'}</td><td>${c.porte||'—'}</td><td>${c.type||'—'} (principal)</td><td>${inf.surface} m²</td><td>${fmt2(prixUnitaireAnnexe)} F</td></tr>
+          ${apptsSupp.map((a,i)=>`<tr><td>${i+2}</td><td>${a.ilot}</td><td>${a.bat}</td><td>${a.etage}</td><td>${a.porte}</td><td>${a.type}</td><td>${a.surface} m²</td><td>${fmt2(prixUnitaireAnnexe)} F</td></tr>`).join('')}
         </tbody>
       </table>
       <div class="prix-box" style="margin-top:18px">
-        <div><span style="font-weight:700">Prix total du dossier (${1+apptsSupp.length} appartements) :</span> <span class="big">${fmt2(c.prix||0)} F CFA</span> <em style="color:#555;font-size:10pt">(${c.prixLettres||'…………………………'} francs CFA)</em></div>
+        <div><span style="font-weight:700">Prix total du dossier (${nbApptsAnnexe} appartements) :</span> <span class="big">${fmt2(c.prix||0)} F CFA</span> <em style="color:#555;font-size:10pt">(${c.prixLettres||'…………………………'} francs CFA)</em></div>
       </div>
       <p style="margin-top:14px;font-size:9.5pt;color:#555">Les conditions générales de souscription, l'échéancier et les engagements décrits dans les pages suivantes s'appliquent globalement à l'ensemble de ces appartements, réunis au sein d'un dossier unique.</p>
     </div>
