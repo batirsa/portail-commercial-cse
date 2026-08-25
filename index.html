@@ -1969,6 +1969,7 @@ function resetForm(){
   _apptsSupp = [];
   _prixPrincipalCatalogue = 0;
   _prixUnitaireNegocie = 0;
+  _prixEstCNPS = false;
   majMenuTypePrix();
   document.getElementById('immeubleZone').style.display = 'none';
   renderApptsSupp();
@@ -2066,18 +2067,22 @@ function majMenuTypePrix(){
   }
   if(t && PRIX_CNPS[t]){
     PRIX_CNPS[t].forEach((p,i)=>{
-      options.push(`<option value="${p}">Prix CNPS — Option ${i+1} — ${fmt(p)} F</option>`);
+      options.push(`<option value="${p}" data-cnps="1">Prix CNPS — Option ${i+1} — ${fmt(p)} F</option>`);
     });
   }
   sel.innerHTML = options.join('');
 }
 
 // Applique le prix de référence choisi au champ Prix du logement — reste
-// ensuite librement modifiable pour négocier une réduction.
+// ensuite librement modifiable pour négocier une réduction. Retient aussi si
+// le prix choisi est un prix CNPS : ça détermine le seuil de déclenchement
+// de la commission commerciale (10% de l'apport en CNPS, 20% sinon).
 function appliquerTypePrix(){
   const sel = document.getElementById('f_typePrix');
   if(!sel || !sel.value) return;
   document.getElementById('f_prix').value = sel.value;
+  const opt = sel.options[sel.selectedIndex];
+  _prixEstCNPS = !!(opt && opt.dataset.cnps === '1');
   calcFinancier();
 }
 
@@ -2088,6 +2093,7 @@ let _stockPickerSelection = new Set();
 let _apptsSupp = [];             // appartements supplémentaires du dossier en cours (achat groupé)
 let _prixPrincipalCatalogue = 0; // prix catalogue de l'appartement principal choisi, pour le recalcul du total
 let _prixUnitaireNegocie = 0; // prix unitaire négocié saisi par le commercial pour le calcul du total (achat groupé)
+let _prixEstCNPS = false; // le prix choisi via le menu Type de prix est-il un prix CNPS ? (seuil de commission)
 
 async function ouvrirStockPicker(mode){
   _stockPickerMode = (mode === 'multi') ? 'multi' : 'single';
@@ -2533,6 +2539,7 @@ async function sauvegarder(){
     dateSign:       document.getElementById('f_dateSign').value,
     commercial,
     appartementsSuppIds: _apptsSupp.map(a=>a.stockId),
+    prixCNPS: _prixEstCNPS,
     gestionnaire:   document.getElementById('f_gestionnaire').value,
     cite:           document.getElementById('f_cite').value,
     domiciliation:  document.getElementById('f_domiciliation').value,
@@ -2677,6 +2684,7 @@ function editerClient(id){
   document.getElementById('f_etage').value=c.etage||'';
   _apptsSupp = Array.isArray(c.appartementsSupp) ? c.appartementsSupp.slice() : [];
   _prixPrincipalCatalogue = 0; // inconnu en édition — à recalculer manuellement si besoin
+  _prixEstCNPS = !!c.prixCNPS;
   _prixUnitaireNegocie = _apptsSupp.length ? Math.round((Number(c.prix)||0) / (1+_apptsSupp.length)) : 0;
   renderApptsSupp();
   if(c.stockId){
