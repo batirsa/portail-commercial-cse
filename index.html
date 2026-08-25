@@ -4171,6 +4171,23 @@ function buildPDF(c){
   // ── PAGE 4 : ADHÉSION ──
   const checkedBox = `<span class="check-box">✓</span>`;
   const emptyBox   = `<span class="check-box"></span>`;
+  // Résumé du/des bien(s) souscrit(s), adapté à l'achat groupé : bâtiment(s),
+  // type(s) et surface(s) uniques présents dans le dossier (principal + suppléments),
+  // et le nombre total d'appartements — plutôt qu'un seul appartement fixe.
+  const biensArticle8 = [
+    { bat: c.lot, type: c.type, surface: inf.surface },
+    ...apptsSupp.map(a => ({ bat: a.bat, type: a.type, surface: a.surface })),
+  ];
+  const nbApptsArticle8 = biensArticle8.length;
+  const batsUniques = Array.from(new Set(biensArticle8.map(b=>b.bat).filter(Boolean)));
+  const typesUniques = Array.from(new Set(biensArticle8.map(b=>b.type).filter(Boolean)));
+  const surfacesUniques = Array.from(new Set(biensArticle8.map(b=>b.surface).filter(Boolean)));
+  const batLabelArticle8 = batsUniques.length ? batsUniques.join(', ') : '…';
+  const typeLabelArticle8 = typesUniques.length ? typesUniques.join(', ') : (c.type||'…');
+  const piecesLabelArticle8 = typesUniques.length > 1
+    ? typesUniques.map(t => (typeMap[t] ? typeMap[t].nb : '?')).join('/')
+    : inf.nb;
+  const surfaceLabelArticle8 = surfacesUniques.length ? surfacesUniques.join(' / ') : inf.surface;
   const pg4 = `
   <div class="doc-page">
     ${header(dossier)}
@@ -4178,10 +4195,11 @@ function buildPDF(c){
       <h2>ARTICLE 8 : CONDITION D'ADHESION</h2>
       <p style="font-size:11pt"><strong>M./Mme/Mlle :</strong> ${c.nom} &nbsp;·&nbsp; <em>${c.tel||''} ${c.email?'· '+c.email:''}</em></p>
       <div class="adhesion-box">
-        <b>Bâtiment :</b> ${c.lot||'…'} &nbsp; <b>Nombre de pièces :</b> ${inf.nb} &nbsp; <b>N° étage :</b> ${c.etage||'…'} &nbsp; <b>Surface :</b> ${inf.surface} M²<br>
+        <b>Nombre d'appartements souscrits :</b> ${nbApptsArticle8}${nbApptsArticle8>1?` (achat groupé)`:''}<br>
+        <b>${batsUniques.length>1?'Bâtiments':'Bâtiment'} :</b> ${batLabelArticle8} &nbsp; <b>Type${typesUniques.length>1?'s':''} :</b> ${typeLabelArticle8} &nbsp; <b>Pièces :</b> ${piecesLabelArticle8} &nbsp; <b>Surface${surfacesUniques.length>1?'s':''} :</b> ${surfaceLabelArticle8} M²<br>
         <b>Mode de paiement :</b> Cash ${c.modePaiement==='Espèces'||c.modePaiement==='Cash'?checkedBox:emptyBox} &nbsp;&nbsp; Crédit Bancaire ${c.modePaiement==='Crédit Bancaire'?checkedBox:emptyBox}
       </div>
-      <p>Demande à adhérer à la Promotion Immobilière « <strong>CITE SAINTE ELISABETH</strong> » sis <strong>SAN PEDRO – STADE LAURENT POKOU</strong>, pour un appartement de <strong>${inf.nb}</strong> pièces sur <strong>${inf.surface}</strong> M² à titre individuel, après avoir pris connaissance des conditions d'adhésion que j'accepte.</p>
+      <p>Demande à adhérer à la Promotion Immobilière « <strong>CITE SAINTE ELISABETH</strong> » sis <strong>SAN PEDRO – STADE LAURENT POKOU</strong>, pour ${nbApptsArticle8>1 ? `<strong>${nbApptsArticle8} appartements</strong> (types ${typeLabelArticle8}, ${surfaceLabelArticle8} M² — voir annexe pour le détail)` : `un appartement de <strong>${inf.nb}</strong> pièces sur <strong>${inf.surface}</strong> M²`} à titre individuel, après avoir pris connaissance des conditions d'adhésion que j'accepte.</p>
       <div class="prix-box">
         <div><span style="font-weight:700">Prix du logement :</span> <span class="big">${fmt2(c.prix||0)} F CFA</span> <em style="color:#555;font-size:10pt">(${c.prixLettres||'…………………………'} francs CFA)</em></div>
         <div style="margin-top:6px"><span style="font-weight:700">Apport initial :</span> <strong style="color:#1a7a4a">${fmt2(c.apport||0)} F CFA</strong> &nbsp;&nbsp; <span style="font-weight:700">Reste à payer :</span> <strong style="color:#a32d2d">${fmt2(reste)} F CFA</strong></div>
