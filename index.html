@@ -4083,18 +4083,52 @@ function buildPDF(c){
     ${footer()}
   </div>`;
 
+  // Détail des surfaces par pièce, tiré des fiches techniques officielles
+  // BÂTIR S.A. (extraites le 26/08/2026) — remplace l'ancienne fiche technique
+  // en image par un tableau imprimé directement, plus net et plus léger.
+  const DETAIL_SURFACES = {
+    F2: { total: '83', delai: '2028', pieces: [
+      ['Cuisine','8'],['Balcon','4'],["Salle d'eau",'3'],['Dégagement','7'],
+      ['Salon + SAM','27'],['Balcon','9'],['Chambre','16'],['Dressing','3'],
+      ['Salle de bain','4'],['Balcon','2'],
+    ]},
+    F3: { total: '137,13', delai: '2028', pieces: [
+      ['Dégagement','10,11'],['Toilette visiteur','2,99'],['Cuisine','14,72'],['Buanderie','4,38'],
+      ['Séjour','32,36'],['Balcon','10,16'],['Sas','6,69'],['Chambre principale','20,81'],
+      ['Salle de bain P','4'],['Balcon','3,90'],['Chambre 2','20'],['Salle de bain','3,90'],['Balcon','3,11'],
+    ]},
+    F4: { total: '199,05', delai: '2028', pieces: [
+      ['Cuisine','12,2'],['Buanderie','4,58'],['WC visiteur','2,34'],['Dégagement','12,11'],
+      ['Séjour + SAM','45,15'],['Balcon','27,07'],['Chambre parentale','22,72'],['Dressing','4,25'],
+      ['Salle de bain','7,02'],['Balcon','10,40'],['Chambre 2','16,53'],['Salle de bain','4,50'],
+      ['Chambre 3','22,60'],['Salle de bain','4,60'],['Balcon','2,98'],
+    ]},
+  };
+
   // ── PAGE 2bis : FICHE(S) TECHNIQUE(S) — une par type réellement présent ──
   const pgFicheTechnique = typesPresents2.map(t => {
-    const ft = FICHES_TECHNIQUES[t];
-    if(!ft) return '';
+    const d = DETAIL_SURFACES[t];
+    if(!d) return '';
+    const infT = typeMap[t] || {nb:'?', surface:d.total};
     return `
   <div class="doc-page">
     ${header(dossier)}
-    <div class="body body-center">
-      <h2>FICHE TECHNIQUE — APPARTEMENT ${t}</h2>
-      <div style="text-align:center;margin-top:10px">
-        <img src="${ft.fiche}" style="max-width:100%;max-height:230mm;border:1px solid #ccc;border-radius:6px">
+    <div class="body">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-size:11pt;font-style:italic;color:#00294d">Sainte Élisabeth</div>
+        <div style="font-size:10pt;font-weight:700;color:#f36f00">SAN PEDRO — Stade Laurent Poko</div>
+        <div style="font-size:16pt;font-weight:800;color:#00294d;margin-top:8px">« APPARTEMENT »</div>
+        <div style="font-size:11pt;font-weight:700">${infT.nb} pièces sur ${d.total} m²</div>
       </div>
+      <h2 style="margin-top:0">FICHE TECHNIQUE — DÉTAIL DES SURFACES</h2>
+      <table class="echeancier-table">
+        <thead><tr><th>PIÈCE</th><th style="text-align:right">SURFACE</th></tr></thead>
+        <tbody>
+          ${d.pieces.map((p,i)=>`<tr style="background:${i%2?'#eef6fb':'#fff'}"><td>${p[0]}</td><td style="text-align:right">${p[1]} m²</td></tr>`).join('')}
+          <tr style="background:#00294d;color:#fff;font-weight:800"><td>SUPERFICIE TOTALE</td><td style="text-align:right">${d.total} m²</td></tr>
+        </tbody>
+      </table>
+      <p style="margin-top:18px;font-weight:700">Délai de livraison (1ère tranche) : ${d.delai}</p>
     </div>
     ${footer()}
   </div>`;
