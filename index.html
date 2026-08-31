@@ -3802,7 +3802,7 @@ function buildContratReservation(c){
       &nbsp;·&nbsp; <span class="page-num">__PAGENUM__</span>
     </div>`;
 
-  // ── PAGE 1 : GARDE + PARTIES + EXPOSÉ ──
+  // ── PAGE 1 : GARDE + IDENTIFICATION DES PARTIES ──
   const identiteReservataire = estEntreprise ? `
     <p><strong>2°/ La société ${c.nom}</strong>, immatriculée sous le numéro RCCM ${c.rccm||'……………'}, ayant son siège social à ${c.siegeSocial||'……………'}, représentée par ${c.representantNom||'……………'} (${c.representantFonction||'……………'}), téléphone : ${c.tel||'……………'}, email : ${c.email||'……………'}</p>`
     : `
@@ -3826,28 +3826,44 @@ function buildContratReservation(c){
       ${identiteReservataire}
       <p>Ci-après désigné(e) « <strong>LE RÉSERVATAIRE</strong> » ou « <strong>L'ACHETEUR</strong> »</p>
       <p style="text-align:right"><strong>D'AUTRE PART</strong></p>
+    </div>
+    ${footer()}
+  </div>`;
+
+  // ── PAGE 2 : DÉNOMINATIONS + EXPOSÉ ──
+  const pg2 = `
+  <div class="doc-page">
+    ${header()}
+    <div class="body">
       <p>Les dénominations « LE PROMOTEUR » et « LE RÉSERVATAIRE » ci-dessus établies définissent l'entité juridique du contractant, sans égard au nombre, à la personnalité physique ou morale de celui-ci, à son intervention directe ou par mandataire, et emporte solidarité en cas de pluralité de personnes répondant à la même dénomination.</p>
 
       <h3>IL A ÉTÉ PRÉALABLEMENT EXPOSÉ :</h3>
       <p><strong>LE PROMOTEUR</strong> réalise, dans la commune de San-Pedro, à proximité du Stade Laurent Pokou, sur une superficie de plus de onze (11) hectares, un ensemble immobilier résidentiel dénommé « <strong>CITÉ SAINTE-ÉLISABETH DES RÉSIDENCES BÂTIR</strong> » (ci-après « CSE » ou « la Cité »), composé de <strong>41 immeubles totalisant 720 appartements</strong>, et offrant les commodités suivantes : ascenseur, salle de sport, club house et piscine, aires de jeux et espaces verts, école primaire et garderie, centre commercial, centre de santé, accès sécurisé, voiries et réseaux divers.</p>
       <p>Le programme est agréé par le Ministère de la Construction, du Logement et de l'Urbanisme au titre de l'arrêté n°26-00006/MCLU/DGLCV/CAPPI/olga du 23 janvier 2026 et du Permis de Construire n°206-00059/MCLU/CAB/GUPC/AAW du 23 janvier 2026, et bénéficie du Certificat de Mutation de Propriété Foncière n°20251165 et du Titre Foncier n°4 925 du Bas Cavally.</p>
+      <p>LE RÉSERVATAIRE s'est déclaré intéressé par l'acquisition, au sein de ce programme, d'un ${typeLabel}${nbAppts>1?` et de ${nbAppts-1} appartement(s) supplémentaire(s)`:''}, et a souhaité que lui soit consentie la réservation ci-après spécifiée, telle qu'exposée dans le Dossier de Souscription n° <strong>${dossier}</strong> en date du ${c.dateSign||'……………'}, annexé aux présentes (Annexe 1).</p>
+      <p style="text-align:center;font-weight:700">CECI EXPOSÉ, IL A ÉTÉ CONVENU ET ARRÊTÉ CE QUI SUIT :</p>
+      <div class="encart">CONTRAT DE RÉSERVATION</div>
     </div>
     ${footer()}
   </div>`;
 
-  // ── PAGE 2 : SUITE EXPOSÉ + ARTICLE 1 + ARTICLE 2 ──
-  const pg2 = `
+  // ── PAGE 3 : ARTICLE UN ──
+  const pg3 = `
   <div class="doc-page">
     ${header()}
     <div class="body">
-      <p>LE RÉSERVATAIRE s'est déclaré intéressé par l'acquisition, au sein de ce programme, d'un ${typeLabel}${nbAppts>1?` et de ${nbAppts-1} appartement(s) supplémentaire(s)`:''}, et a souhaité que lui soit consentie la réservation ci-après spécifiée, telle qu'exposée dans le Dossier de Souscription n° <strong>${dossier}</strong> en date du ${c.dateSign||'……………'}, annexé aux présentes (Annexe 1).</p>
-      <p style="text-align:center;font-weight:700">CECI EXPOSÉ, IL A ÉTÉ CONVENU ET ARRÊTÉ CE QUI SUIT :</p>
-      <div class="encart">CONTRAT DE RÉSERVATION</div>
-
       <h2>ARTICLE UN<br><span style="font-size:10pt">OBJET</span></h2>
       <p>Par le présent contrat, LE PROMOTEUR s'engage et promet de vendre à LE RÉSERVATAIRE, qui accepte, <strong>${nbAppts>1?`les ${nbAppts} appartements`:`le bien`} de référence ${c.porte||'……'}</strong> (${c.type||'……'})${nbAppts===1?` situé au ${c.etage||'……'} étage du bâtiment ${c.lot||'……'}, îlot ${c.ilot||'……'}`:''}, pour une superficie contractuelle totale annoncée de ${nbAppts>1?apptsSupp.reduce((s,a)=>s+(Number(a.surface)||0),Number(inf.surface)||0)+' ':inf.surface} m²${nbAppts>1?' (cumulée)':''}, ainsi qu'un emplacement de parking attaché au bien, le tout destiné à faire l'objet d'une vente en l'état futur d'achèvement.</p>
       <p>En contrepartie du paiement par L'ACHETEUR du prix d'acquisition défini à l'Article Quatre.</p>
+    </div>
+    ${footer()}
+  </div>`;
 
+  // ── PAGE 4 : ARTICLE DEUX ──
+  const pg4 = `
+  <div class="doc-page">
+    ${header()}
+    <div class="body">
       <h2>ARTICLE DEUX<br><span style="font-size:10pt">DÉSIGNATION DE L'IMMEUBLE ET DESCRIPTION DE L'APPARTEMENT</span></h2>
       <h3>Désignation de l'ensemble immobilier</h3>
       <p>Commune de San-Pedro — Programme « Cité Sainte-Élisabeth », sis à proximité du Stade Laurent Pokou<br>
@@ -3866,8 +3882,8 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  // ── PAGE 3 : ARTICLE 3, 4, 5 ──
-  const pg3 = `
+  // ── PAGE 5 : ARTICLE TROIS + ARTICLE QUATRE ──
+  const pg5 = `
   <div class="doc-page">
     ${header()}
     <div class="body">
@@ -3875,11 +3891,19 @@ function buildContratReservation(c){
       <p>Les travaux de réalisation de l'ensemble immobilier s'effectueront, sauf cas de force majeure, sur une durée de deux (02) ans à compter de janvier 2026.</p>
       <p>La livraison de l'appartement, au stade de finition totale et selon le mode « clés en main », interviendra dans le second trimestre suivant le paiement complet du prix de vente et, le cas échéant, du prix des travaux supplémentaires. ${vg?`L'appartement relève de la Vague V${c.vague} - ${vg.label}, d'une durée de vingt-quatre (${vg.mois}) mois.`:''}</p>
 
-      <h2>ARTICLE QUATRE<br><span style="font-size:10pt">PRIX DE VENTE ET MODALITÉS DE PAIEMENT</span></h2>
+      <h2 style="margin-top:22px">ARTICLE QUATRE<br><span style="font-size:10pt">PRIX DE VENTE ET MODALITÉS DE PAIEMENT</span></h2>
       <p>Le prix global, forfaitaire et convenu ${nbAppts>1?`des ${nbAppts} appartements`:`du bien`}, parking compris, est fixé à ${(c.prixLettres||'……………').toUpperCase()} (${fmt2(prixTotal)}) DE FRANCS CFA.</p>
       <p>Ce prix est ferme, définitif et non révisable. Il ne pourra faire l'objet d'aucune augmentation, indexation ou réévaluation, quelle qu'en soit la cause, sauf travaux supplémentaires expressément demandés par LE RÉSERVATAIRE et préalablement acceptés par écrit quant à leur nature et leur prix.</p>
       <p>Les parties reconnaissent expressément que ce prix constitue la condition commerciale particulière définitivement consentie au RÉSERVATAIRE pour le bien objet des présentes.</p>
+    </div>
+    ${footer()}
+  </div>`;
 
+  // ── PAGE 6 : ARTICLE CINQ ──
+  const pg6 = `
+  <div class="doc-page">
+    ${header()}
+    <div class="body">
       <h2>ARTICLE CINQ<br><span style="font-size:10pt">MODALITÉS DE PAIEMENT - PÉNALITÉS DE RETARD</span></h2>
       <p>Le prix sera réglé comme suit :</p>
       <div class="tiret">Apport initial : ${fmt2(apport)} FCFA, correspondant à ${pctApport}% du prix contractuel ;</div>
@@ -3894,8 +3918,8 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  // ── PAGE 4 : ARTICLE 6, 7, 8, 9 ──
-  const pg4 = `
+  // ── PAGE 7 : ARTICLE SIX + ARTICLE SEPT ──
+  const pg7 = `
   <div class="doc-page">
     ${header()}
     <div class="body">
@@ -3903,21 +3927,29 @@ function buildContratReservation(c){
       <p>En cas de désistement de LE RÉSERVATAIRE, une indemnité d'immobilisation correspondant à cinq pour cent (5%) du coût du logement sera prélevée sur les sommes déjà versées, le solde étant restitué à LE RÉSERVATAIRE dans un délai maximum de trente (30) jours.</p>
       <p>Toutefois, BATIR S.A. s'engage à exonérer LE RÉSERVATAIRE du prélèvement de cette indemnité d'immobilisation si celui-ci se fait subroger dans ses droits par un nouvel acquéreur, dans un délai de trente (30) jours à compter de la date du désistement.</p>
 
-      <h2>ARTICLE SEPT<br><span style="font-size:10pt">MODE DE LIVRAISON ET FINITIONS</span></h2>
+      <h2 style="margin-top:22px">ARTICLE SEPT<br><span style="font-size:10pt">MODE DE LIVRAISON ET FINITIONS</span></h2>
       <p>La livraison s'effectuera « clés en main ». ${c.optionFinition ? `Le réservataire a par ailleurs souscrit l'option de finition « ${c.optionFinition} ».` : "Aucune option de finition supplémentaire (domotique, électroménager) n'a été souscrite à la date des présentes."} Le détail des travaux de finition inclus dans le prix de vente (étanchéité, enduit de lissage, faux plafond, plomberie, électricité, menuiserie, carrelage, sanitaires, mobilier de cuisine, peinture) figure à l'Article 10 du Dossier de Souscription annexé (Annexe 1).</p>
+    </div>
+    ${footer()}
+  </div>`;
 
+  // ── PAGE 8 : ARTICLE HUIT + ARTICLE NEUF ──
+  const pg8 = `
+  <div class="doc-page">
+    ${header()}
+    <div class="body">
       <h2>ARTICLE HUIT<br><span style="font-size:10pt">INCORPORATION DES CONDITIONS GÉNÉRALES DE SOUSCRIPTION</span></h2>
       <p>Les Conditions Générales de Souscription du programme « Cité Sainte-Élisabeth » (Dossier n° ${dossier}, Articles 1 à 20), et notamment les dispositions relatives aux obligations de l'acquéreur et du promoteur, à l'esthétique, au caractère de l'occupation, à la propriété du sol, de la voirie et des équipements, à l'entretien des voies et à la modification des parties privées, sont annexées au présent contrat (Annexe 1) et en font partie intégrante. LE RÉSERVATAIRE reconnaît avoir reçu les conditions générales de souscription annexées aux présentes. En cas de contradiction entre celles-ci et le présent contrat de réservation, les dispositions particulières du présent contrat prévaudront.</p>
       <p>Un cahier des charges spécifique déterminant les règles et servitudes de la copropriété sera établi et remis à LE RÉSERVATAIRE au moment de la signature de l'acte de vente authentique auprès du notaire.</p>
 
-      <h2>ARTICLE NEUF<br><span style="font-size:10pt">ÉLECTION DE DOMICILE</span></h2>
+      <h2 style="margin-top:22px">ARTICLE NEUF<br><span style="font-size:10pt">ÉLECTION DE DOMICILE</span></h2>
       <p>Pour l'exécution des présentes et de leurs suites, les parties élisent domicile aux adresses respectives sus-indiquées.</p>
     </div>
     ${footer()}
   </div>`;
 
-  // ── PAGE 5 : ARTICLE 10 + SIGNATURES ──
-  const pg5 = `
+  // ── PAGE 9 : ARTICLE DIX + SIGNATURES ──
+  const pg9 = `
   <div class="doc-page">
     ${header()}
     <div class="body">
@@ -3940,15 +3972,23 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  // ── PAGE 6 : ANNEXES ──
-  const pg6 = `
+  // ── PAGE 10 : ANNEXE 1 ──
+  const pg10 = `
   <div class="doc-page">
     ${header()}
     <div class="body">
       <h2>ANNEXE 1<br><span style="font-size:10pt">CONDITIONS GÉNÉRALES DE SOUSCRIPTION</span></h2>
       <p>Le Dossier de Souscription n° <strong>${dossier}</strong> (« Conditions Générales de Souscription — Cité Sainte-Élisabeth »), en date du ${c.dateSign||'……………'} et comprenant notamment la description de l'opération immobilière, la description du bien, les modalités de paiement, de finition, de livraison, ainsi que les obligations des parties (Articles 1 à 20), est joint au présent contrat et en fait partie intégrante.</p>
+    </div>
+    ${footer()}
+  </div>`;
 
-      <h2 style="margin-top:24px">ANNEXE 2<br><span style="font-size:10pt">ÉCHÉANCIER DE PAIEMENT</span></h2>
+  // ── PAGE 11 : ANNEXE 2 (ÉCHÉANCIER) ──
+  const pg11 = `
+  <div class="doc-page">
+    ${header()}
+    <div class="body">
+      <h2>ANNEXE 2<br><span style="font-size:10pt">ÉCHÉANCIER DE PAIEMENT</span></h2>
       <p><strong>Prix de vente :</strong> ${fmt2(prixTotal)} FCFA — <strong>Apport initial :</strong> ${fmt2(apport)} FCFA — <strong>Reste à payer :</strong> ${fmt2(reste)} FCFA${vg?` — ${vg.label} (${vg.mois} mois)`:''}</p>
       <table class="echeancier-table">
         <thead><tr><th style="width:70px;text-align:center">Versement</th><th>Montant (FCFA)</th><th>Date d'échéance</th></tr></thead>
@@ -3958,7 +3998,7 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  const pagesHTML = `${pg1}${pg2}${pg3}${pg4}${pg5}${pg6}`;
+  const pagesHTML = `${pg1}${pg2}${pg3}${pg4}${pg5}${pg6}${pg7}${pg8}${pg9}${pg10}${pg11}`;
   const totalPages = (pagesHTML.match(/__PAGENUM__/g) || []).length;
   let numeroPage = 0;
   const pagesHTMLNumerotees = pagesHTML.replace(/__PAGENUM__/g, () => {
