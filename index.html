@@ -3738,7 +3738,7 @@ function buildContratReservation(c){
   const estEntreprise = c.typeSouscripteur === 'entreprise';
 
   const versRows = versements.length
-    ? versements.map(v=>`<tr><td style="text-align:center;font-weight:700;color:#00294d">${v.num}</td><td style="font-weight:600;color:#1a7a4a">${fmt2(v.montant)} FCFA</td><td>${v.date||'—'}</td></tr>`).join('')
+    ? versements.map(v=>`<tr><td style="text-align:center;font-weight:700;color:#00294d">${v.num}</td><td style="font-weight:600;color:#1a7a4a">${v.montant}</td><td>${v.date||'—'}</td></tr>`).join('')
     : Array.from({length:nbVers},(_,i)=>`<tr><td style="text-align:center;font-weight:700;color:#00294d">${ordinal(i+1)}</td><td>…………………………</td><td>………… / ………… / …………</td></tr>`).join('');
 
   const css = `
