@@ -3751,7 +3751,9 @@ function buildContratReservation(c){
     .header{display:flex;justify-content:space-between;align-items:flex-start;padding:8mm 16mm 0}
     .header-logo img{height:38px;display:block}
     .header-sub{font-style:italic;color:#00294d;font-size:9pt;margin-top:2px}
-    .band{background:#00294d;color:#fff;font-size:8pt;font-weight:700;text-align:center;padding:4px 10px;margin-top:6px}
+    .band{background:linear-gradient(to right,#dce8f2,#eef4f9);color:#1a3a5c;font-size:8pt;font-weight:700;text-align:center;padding:5px 10px;margin-top:6px;border-top:1px solid #b8cfe0;border-bottom:1px solid #b8cfe0}
+    .watermark{position:absolute;top:48%;left:50%;transform:translate(-50%,-50%);width:150mm;opacity:.05;z-index:0;pointer-events:none}
+    .doc-page .header,.doc-page .body,.doc-page .footer-bar{position:relative;z-index:1}
     .footer-bar{background:#f7f8fa;border-top:1.5px solid #f36f00;padding:7px 24px;font-size:7.5pt;color:#888;text-align:center}
     h1{font-size:16pt;color:#00294d;text-align:center;margin-bottom:4px}
     h2{font-size:12pt;color:#00294d;text-decoration:underline;text-align:center;margin:14px 0 10px}
@@ -3783,11 +3785,13 @@ function buildContratReservation(c){
       .doc-page:last-of-type{page-break-after:auto}
     }`;
 
+  const watermark = `<img class="watermark" src="${LOGO_BATIR}" alt="">`;
+
   const header = () => `
     <div class="header">
       <div>
         <div class="header-logo"><img src="${LOGO_BATIR}" alt="BÂTIR S.A"></div>
-        <div class="header-sub">Des Références qui donnent de l'Assurance</div>
+        <div class="header-sub">Des <span style="background:#f9d9b8">Références qui donnent de l'Assur</span>ance</div>
       </div>
       <div style="text-align:right;font-size:9pt;font-weight:700;color:#00294d">Dossier N° ${dossier}<br><span style="font-weight:400;color:#888">Contrat de réservation</span></div>
     </div>
@@ -3809,7 +3813,7 @@ function buildContratReservation(c){
     <p><strong>2°/ ${c.civilite||'M./Mme/Mlle'} ${c.nom}</strong>, ${c.profession?c.profession+', ':''}titulaire de la pièce d'identité n° <strong>${c.cni||'……………'}</strong>${c.cniVal?', valide jusqu\'au '+c.cniVal:''}, né(e) à ${c.lieuNaiss||'……………'} le ${c.dateNaiss||'……………'} de nationalité ${c.nationalite||'ivoirienne'}, demeurant à ${c.commune||'San-Pédro'}. Téléphone : ${c.tel||'……………'}, email : ${c.email||'……………'}</p>`;
 
   const pg1 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <h1>CONTRAT DE RÉSERVATION EN VUE DE LA VENTE<br>EN L'ÉTAT FUTUR D'ACHÈVEMENT</h1>
@@ -3835,7 +3839,7 @@ function buildContratReservation(c){
 
   // ── PAGE 2 : FIN DE L'EXPOSÉ + ARTICLE UN + ARTICLE DEUX ──
   const pg2 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <p>Le programme est agréé par le Ministère de la Construction, du Logement et de l'Urbanisme au titre de l'arrêté n°26-00006/MCLU/DGLCV/CAPPI/olga du 23 janvier 2026 et du Permis de Construire n°206-00059/MCLU/CAB/GUPC/AAW du 23 janvier 2026, et bénéficie du Certificat de Mutation de Propriété Foncière n°20251165 et du Titre Foncier n°4 925 du Bas Cavally.</p>
@@ -3867,7 +3871,7 @@ function buildContratReservation(c){
 
   // ── PAGE 3 : ARTICLE TROIS + ARTICLE QUATRE + DÉBUT ARTICLE CINQ ──
   const pg3 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <h2>ARTICLE TROIS<br><span style="font-size:10pt">DÉLAI D'EXÉCUTION ET DE LIVRAISON</span></h2>
@@ -3890,7 +3894,7 @@ function buildContratReservation(c){
 
   // ── PAGE 4 : SUITE ARTICLE CINQ + ARTICLE SIX + ARTICLE SEPT ──
   const pg4 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <p>Le présent échéancier ne pourra être modifié sans l'accord écrit préalable du réservataire.</p>
@@ -3911,7 +3915,7 @@ function buildContratReservation(c){
 
   // ── PAGE 5 : ARTICLE HUIT + ARTICLE NEUF + ARTICLE DIX + SIGNATURES ──
   const pg5 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <h2>ARTICLE HUIT<br><span style="font-size:10pt">INCORPORATION DES CONDITIONS GÉNÉRALES DE SOUSCRIPTION</span></h2>
@@ -3942,7 +3946,7 @@ function buildContratReservation(c){
 
   // ── PAGE 6 : ANNEXE 1 ──
   const pg6 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <h2>ANNEXE 1<br><span style="font-size:10pt">CONDITIONS GÉNÉRALES DE SOUSCRIPTION</span></h2>
@@ -3953,7 +3957,7 @@ function buildContratReservation(c){
 
   // ── PAGE 7 : ANNEXE 2 (ÉCHÉANCIER) ──
   const pg7 = `
-  <div class="doc-page">
+  <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
       <h2>ANNEXE 2<br><span style="font-size:10pt">ÉCHÉANCIER DE PAIEMENT</span></h2>
