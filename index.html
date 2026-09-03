@@ -3885,7 +3885,7 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  // ── PAGE 2 : FIN DE L'EXPOSÉ + ARTICLE UN + ARTICLE DEUX ──
+  // ── PAGE 2 : FIN DE L'EXPOSÉ + ARTICLE UN ──
   const pg2 = `
   <div class="doc-page">${watermark}
     ${header()}
@@ -3898,8 +3898,16 @@ function buildContratReservation(c){
       <h2>ARTICLE UN<br><span style="font-size:10pt">OBJET</span></h2>
       <p>Par le présent contrat, LE PROMOTEUR s'engage et promet de vendre à LE RÉSERVATAIRE, qui accepte, <strong>${nbAppts>1?`les ${nbAppts} appartements`:`le bien`} de référence ${c.porte||'……'}</strong> (${c.type||'……'})${nbAppts===1?` situé au ${c.etage||'……'} étage du bâtiment ${c.lot||'……'}, îlot ${c.ilot||'……'}`:''}, pour une superficie contractuelle totale annoncée de ${nbAppts>1?apptsSupp.reduce((s,a)=>s+(Number(a.surface)||0),Number(inf.surface)||0)+' ':inf.surface} m²${nbAppts>1?' (cumulée)':''}, ainsi qu'un emplacement de parking attaché au bien, le tout destiné à faire l'objet d'une vente en l'état futur d'achèvement.</p>
       <p>En contrepartie du paiement par L'ACHETEUR du prix d'acquisition défini à l'Article Quatre.</p>
+    </div>
+    ${footer()}
+  </div>`;
 
-      <h2 style="margin-top:18px">ARTICLE DEUX<br><span style="font-size:10pt">DÉSIGNATION DE L'IMMEUBLE ET DESCRIPTION DE L'APPARTEMENT</span></h2>
+  // ── PAGE 2bis : ARTICLE DEUX ──
+  const pg2b = `
+  <div class="doc-page">${watermark}
+    ${header()}
+    <div class="body">
+      <h2>ARTICLE DEUX<br><span style="font-size:10pt">DÉSIGNATION DE L'IMMEUBLE ET DESCRIPTION DE L'APPARTEMENT</span></h2>
       <h3>Désignation de l'ensemble immobilier</h3>
       <p>Commune de San-Pedro — Programme « Cité Sainte-Élisabeth », sis à proximité du Stade Laurent Pokou<br>
       Superficie de l'assiette foncière : plus de onze hectares (12 ha)<br>
@@ -4033,7 +4041,7 @@ function buildContratReservation(c){
     ${footer()}
   </div>`;
 
-  const pagesHTML = `${pg1}${pg2}${pg3}${pg4}${pg5}${pg6}${pg7}`;
+  const pagesHTML = `${pg1}${pg2}${pg2b}${pg3}${pg4}${pg5}${pg6}${pg7}`;
   const totalPages = (pagesHTML.match(/__PAGENUM__/g) || []).length;
   let numeroPage = 0;
   const pagesHTMLNumerotees = pagesHTML.replace(/__PAGENUM__/g, () => {
