@@ -448,6 +448,12 @@ textarea{resize:vertical;min-height:70px}
         <div class="form-section">
           <div class="form-section-title">💰 Informations financières</div>
           <div class="form-grid">
+            <div class="form-group full" style="background:#fff8e1;border:1px solid #f9c865;border-radius:8px;padding:12px 14px;margin-bottom:4px">
+              <label style="display:flex;align-items:center;gap:8px;font-weight:700;color:#7a5000;cursor:pointer;margin-bottom:0">
+                <input type="checkbox" id="f_gracieux" onchange="toggleGracieux()" style="width:auto">
+                🎁 Attribution gracieuse (don) — aucun prix, aucun apport, aucun échéancier
+              </label>
+            </div>
             <div class="form-group full" id="wrap_typePrix">
               <label>Type de prix <span style="font-weight:400;color:var(--gray)">— pré-remplit le prix ci-dessous, modifiable ensuite pour négocier</span></label>
               <select id="f_typePrix" onchange="appliquerTypePrix()">
@@ -460,7 +466,7 @@ textarea{resize:vertical;min-height:70px}
             <div class="form-group"><label>Apport initial (F CFA)</label><input id="f_apport" type="number" oninput="calcFinancier()" placeholder="15000000"></div>
             <div class="form-group"><label>Mode de paiement</label>
               <select id="f_modePaiement">
-                <option>Espèces</option><option>Virement</option><option>Chèque</option><option>Mobile Money</option><option>Crédit Bancaire</option>
+                <option>Espèces</option><option>Virement</option><option>Chèque</option><option>Mobile Money</option><option>Crédit Bancaire</option><option>Attribution gracieuse</option>
               </select>
             </div>
             <div class="form-group"><label>Vague de livraison *</label>
@@ -1899,7 +1905,7 @@ function renderListe(){
       <td><span class="badge badge-gold">${c.type||'—'}</span></td>
       <td style="font-family:monospace;font-size:12px">${c.porte||'—'}</td>
       <td>${vg?`<span class="badge" style="background:${vg.bg};color:${vg.color}">V${c.vague} · ${vg.mois}m</span>`:'—'}</td>
-      <td style="font-weight:700;font-size:12px">${fmt(c.prix)} F</td>
+      <td style="font-weight:700;font-size:12px">${c.gracieux?'<span class="badge" style="background:#fff8e1;color:#7a5000">🎁 Gracieux</span>':fmt(c.prix)+' F'}</td>
       <td>${statutPaiementBadge(c)}</td>
       <td><span style="font-size:12px">${c.commercial||'—'}</span></td>
       <td style="white-space:nowrap">
@@ -2000,6 +2006,7 @@ function resetForm(){
   document.getElementById('f_frais').value=FRAIS_DEF;
   document.getElementById('f_apport').value='';
   document.getElementById('f_modePaiement').value='Espèces';
+  document.getElementById('f_gracieux').checked = false;
   document.getElementById('f_modeLivraison').value='Clés en main';
   document.getElementById('f_optionFinition').value='Domotique';
   document.getElementById('f_cite').value = NOMS_PROJET[currentProjet] || 'Cité Sainte-Élisabeth';
@@ -2429,6 +2436,38 @@ function choisirAppartement(id){
   toast(`Appartement ${a.appt} sélectionné.`,'success');
 }
 
+// Active/désactive le mode "Attribution gracieuse" : aucun prix, aucun apport,
+// aucun échéancier — l'appartement est cédé sans contrepartie financière.
+function toggleGracieux(){
+  const g = document.getElementById('f_gracieux').checked;
+  const prix = document.getElementById('f_prix');
+  const frais = document.getElementById('f_frais');
+  const apport = document.getElementById('f_apport');
+  const prixLettres = document.getElementById('f_prixLettres');
+  const modePaiement = document.getElementById('f_modePaiement');
+  const typePrixWrap = document.getElementById('wrap_typePrix');
+  const grisFond = '#f7f8fa';
+
+  if(g){
+    prix.value = 0; prix.readOnly = true; prix.style.background = grisFond;
+    frais.value = 0; frais.readOnly = true; frais.style.background = grisFond;
+    apport.value = 0; apport.readOnly = true; apport.style.background = grisFond;
+    prixLettres.value = 'Zéro (attribution gracieuse)'; prixLettres.readOnly = true; prixLettres.style.background = grisFond;
+    modePaiement.value = 'Attribution gracieuse'; modePaiement.disabled = true;
+    typePrixWrap.style.display = 'none';
+  } else {
+    prix.readOnly = false; prix.style.background = '';
+    frais.readOnly = false; frais.style.background = ''; frais.value = FRAIS_DEF;
+    apport.readOnly = false; apport.style.background = '';
+    prixLettres.readOnly = false; prixLettres.style.background = ''; prixLettres.value = '';
+    modePaiement.disabled = false;
+    if(modePaiement.value === 'Attribution gracieuse') modePaiement.value = 'Espèces';
+    typePrixWrap.style.display = '';
+  }
+  calcFinancier();
+  updateRecap();
+}
+
 function calcFinancier(){
   const prix   = parseFloat(document.getElementById('f_prix').value)||0;
   const apport = parseFloat(document.getElementById('f_apport').value)||0;
@@ -2507,7 +2546,8 @@ function updateRecap(){
   const commercial=document.getElementById('f_commercial').value;
   const vague=document.getElementById('f_vague').value;
   const porte=document.getElementById('f_porte').value;
-  if(!nom&&!type&&!prix){ return; }
+  const gracieux=document.getElementById('f_gracieux').checked;
+  if(!nom&&!type&&!prix&&!gracieux){ return; }
   const vg=vague&&VAGUES[vague]?VAGUES[vague]:null;
   document.getElementById('recapPanel').innerHTML=`
     ${dossier?`<div style="text-align:center;margin-bottom:12px"><span class="badge badge-navy" style="font-size:13px;padding:4px 14px">${dossier}</span></div>`:''}
@@ -2515,8 +2555,12 @@ function updateRecap(){
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px">
       <div class="fiche-item"><div class="fiche-label">Type</div><div class="fiche-value">${type||'—'}</div></div>
       <div class="fiche-item"><div class="fiche-label">Appt</div><div class="fiche-value">${porte||'—'}</div></div>
+      ${gracieux ? `
+      <div class="fiche-item" style="grid-column:1/-1"><div class="fiche-label">Transaction</div><div class="fiche-value" style="color:#7a5000">🎁 Attribution gracieuse</div></div>
+      ` : `
       <div class="fiche-item"><div class="fiche-label">Prix</div><div class="fiche-value" style="color:var(--navy)">${fmtM(prix)} F</div></div>
       <div class="fiche-item"><div class="fiche-label">Apport</div><div class="fiche-value" style="color:var(--success)">${fmtM(apport)} F</div></div>
+      `}
     </div>
     ${vg?`<div style="margin-top:10px;background:${vg.bg};border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;color:${vg.color}">🏗 V${vague} — ${vg.label} (${vg.mois} mois)</div>`:''}
     ${_apptsSupp.length?`<div style="margin-top:10px;background:#e8f0f7;border-radius:6px;padding:8px 12px;font-size:12px;font-weight:700;color:#00294d">🏢 Achat groupé — ${1+_apptsSupp.length} appartements au total</div>`:''}
@@ -2542,7 +2586,8 @@ async function sauvegarder(){
   const commercial=document.getElementById('f_commercial').value;
   if(!commercial){ toast('Le commercial est obligatoire.','danger'); return; }
   const prix=parseFloat(document.getElementById('f_prix').value)||0;
-  if(!prix){ toast('Le prix du logement est obligatoire.','danger'); return; }
+  const gracieux = document.getElementById('f_gracieux').checked;
+  if(!prix && !gracieux){ toast('Le prix du logement est obligatoire.','danger'); return; }
   const stockId = document.getElementById('f_stockId').value;
   if(!stockId && !_editId){ toast('Merci de choisir un appartement disponible dans le stock.','danger'); return; }
 
@@ -2600,6 +2645,7 @@ async function sauvegarder(){
     frais:          parseFloat(document.getElementById('f_frais').value)||FRAIS_DEF,
     apport:         parseFloat(document.getElementById('f_apport').value)||0,
     modePaiement:   document.getElementById('f_modePaiement').value,
+    gracieux:       document.getElementById('f_gracieux').checked,
     vague:          parseInt(document.getElementById('f_vague').value)||0,
     modeLivraison:  document.getElementById('f_modeLivraison').value,
     optionFinition: document.getElementById('f_optionFinition').value,
@@ -2710,6 +2756,8 @@ function editerClient(id){
     document.getElementById('apptChoisi').style.display = 'none';
     document.getElementById('apptNonChoisi').style.display = 'block';
   }
+  document.getElementById('f_gracieux').checked = !!c.gracieux;
+  toggleGracieux();
   document.getElementById('f_prix').value=c.prix||'';
   document.getElementById('f_prixLettres').value=c.prixLettres||'';
   document.getElementById('f_frais').value=c.frais||FRAIS_DEF;
@@ -3879,6 +3927,10 @@ function buildContratReservation(c){
       <p>La livraison de l'appartement, au stade de finition totale et selon le mode « clés en main », interviendra dans le second trimestre suivant le paiement complet du prix de vente et, le cas échéant, du prix des travaux supplémentaires. ${vg?`L'appartement relève de la Vague V${c.vague} - ${vg.label}, d'une durée de vingt-quatre (${vg.mois}) mois.`:''}</p>
 
       <h2 style="margin-top:18px">ARTICLE QUATRE<br><span style="font-size:10pt">PRIX DE VENTE ET MODALITÉS DE PAIEMENT</span></h2>
+      ${c.gracieux ? `
+      <p>Par dérogation à l'objet habituel d'un contrat de réservation en vue de la vente, ${nbAppts>1?`les ${nbAppts} appartements`:`le bien`} désigné${nbAppts>1?'s':''} à l'Article Un ${nbAppts>1?'sont':'est'} cédé${nbAppts>1?'s':''} à LE RÉSERVATAIRE <strong>à titre gracieux, sans contrepartie financière</strong>, par décision de LE PROMOTEUR.</p>
+      <p>Aucun prix, aucun apport initial et aucun échéancier de paiement ne sont applicables au présent contrat. Les Articles Cinq (modalités de paiement) et l'Annexe 2 (échéancier) des présentes sont, en conséquence, sans objet.</p>
+      ` : `
       <p>Le prix global, forfaitaire et convenu ${nbAppts>1?`des ${nbAppts} appartements`:`du bien`}, parking compris, est fixé à ${(c.prixLettres||'……………').toUpperCase()} (${fmt2(prixTotal)}) DE FRANCS CFA.</p>
       <p>Ce prix est ferme, définitif et non révisable. Il ne pourra faire l'objet d'aucune augmentation, indexation ou réévaluation, quelle qu'en soit la cause, sauf travaux supplémentaires expressément demandés par LE RÉSERVATAIRE et préalablement acceptés par écrit quant à leur nature et leur prix.</p>
       <p>Les parties reconnaissent expressément que ce prix constitue la condition commerciale particulière définitivement consentie au RÉSERVATAIRE pour le bien objet des présentes.</p>
@@ -3888,6 +3940,7 @@ function buildContratReservation(c){
       <div class="tiret">Apport initial : ${fmt2(apport)} FCFA, correspondant à ${pctApport}% du prix contractuel ;</div>
       <div class="tiret">Solde : ${fmt2(reste)} FCFA, payable en ${nbVers} mensualités conformément à l'échéancier annexé.</div>
       <p>Tout versement donnera obligatoirement lieu à la délivrance d'un reçu officiel de BATIR S.A. mentionnant le dossier <strong>${dossier}</strong>, le bien réservé, le montant versé et le prix contractuel total de ${fmt2(prixTotal)} FCFA.</p>
+      `}
     </div>
     ${footer()}
   </div>`;
@@ -3897,15 +3950,21 @@ function buildContratReservation(c){
   <div class="doc-page">${watermark}
     ${header()}
     <div class="body">
+      ${c.gracieux ? '' : `
       <p>Le présent échéancier ne pourra être modifié sans l'accord écrit préalable du réservataire.</p>
       <p>Les sommes versées s'imputeront exclusivement sur le prix d'acquisition du bien objet du présent contrat.</p>
       <p>En cas de retard dans le paiement d'une échéance, le promoteur adressera au réservataire une mise en demeure écrite lui accordant un délai de quinze (15) jours pour régulariser.</p>
       <p>À défaut de régularisation dans ce délai, toute pénalité éventuellement applicable sera calculée exclusivement sur <strong>le montant de l'échéance en retard</strong> et non sur la totalité du solde restant dû.</p>
       <p>En cas de non-respect par LE RÉSERVATAIRE de l'échéancier de paiement fixé à l'Annexe 2, une pénalité de cinq pour cent (5%) TTC sera appliquée sur le montant de l'échéance en retard, sans préjudice de la faculté pour LE PROMOTEUR de suspendre l'exécution des travaux relatifs à l'appartement jusqu'à régularisation.</p>
+      `}
 
       <h2 style="margin-top:18px">ARTICLE SIX<br><span style="font-size:10pt">DÉSISTEMENT ET RÉSILIATION</span></h2>
+      ${c.gracieux ? `
+      <p>Le présent contrat portant sur une attribution à titre gracieux, LE RÉSERVATAIRE peut à tout moment renoncer au bénéfice du présent contrat par simple déclaration écrite adressée à LE PROMOTEUR, sans qu'aucune indemnité ne soit due par l'une ou l'autre des parties.</p>
+      ` : `
       <p>En cas de désistement de LE RÉSERVATAIRE, une indemnité d'immobilisation correspondant à cinq pour cent (5%) du coût du logement sera prélevée sur les sommes déjà versées, le solde étant restitué à LE RÉSERVATAIRE dans un délai maximum de trente (30) jours.</p>
       <p>Toutefois, BATIR S.A. s'engage à exonérer LE RÉSERVATAIRE du prélèvement de cette indemnité d'immobilisation si celui-ci se fait subroger dans ses droits par un nouvel acquéreur, dans un délai de trente (30) jours à compter de la date du désistement.</p>
+      `}
 
       <h2 style="margin-top:18px">ARTICLE SEPT<br><span style="font-size:10pt">MODE DE LIVRAISON ET FINITIONS</span></h2>
       <p>La livraison s'effectuera « clés en main ». ${c.optionFinition ? `Le réservataire a par ailleurs souscrit l'option de finition « ${c.optionFinition} ».` : "Aucune option de finition supplémentaire (domotique, électroménager) n'a été souscrite à la date des présentes."} Le détail des travaux de finition inclus dans le prix de vente (étanchéité, enduit de lissage, faux plafond, plomberie, électricité, menuiserie, carrelage, sanitaires, mobilier de cuisine, peinture) figure à l'Article 10 du Dossier de Souscription annexé (Annexe 1).</p>
@@ -3961,11 +4020,15 @@ function buildContratReservation(c){
     ${header()}
     <div class="body">
       <h2>ANNEXE 2<br><span style="font-size:10pt">ÉCHÉANCIER DE PAIEMENT</span></h2>
+      ${c.gracieux ? `
+      <p><strong>Sans objet</strong> — ${nbAppts>1?`les ${nbAppts} appartements`:`le bien`} ${nbAppts>1?'sont':'est'} cédé${nbAppts>1?'s':''} à titre gracieux (voir Article Quatre). Aucun prix, aucun apport et aucun échéancier de paiement ne sont applicables au présent contrat.</p>
+      ` : `
       <p><strong>Prix de vente :</strong> ${fmt2(prixTotal)} FCFA — <strong>Apport initial :</strong> ${fmt2(apport)} FCFA — <strong>Reste à payer :</strong> ${fmt2(reste)} FCFA${vg?` — ${vg.label} (${vg.mois} mois)`:''}</p>
       <table class="echeancier-table">
         <thead><tr><th style="width:70px;text-align:center">Versement</th><th>Montant (FCFA)</th><th>Date d'échéance</th></tr></thead>
         <tbody>${versRows}</tbody>
       </table>
+      `}
     </div>
     ${footer()}
   </div>`;
@@ -4592,18 +4655,27 @@ function buildPDF(c){
         <b>Mode de paiement :</b> Cash ${c.modePaiement==='Espèces'||c.modePaiement==='Cash'?checkedBox:emptyBox} &nbsp;&nbsp; Crédit Bancaire ${c.modePaiement==='Crédit Bancaire'?checkedBox:emptyBox}
       </div>
       <p>Demande à adhérer à la Promotion Immobilière « <strong>CITE SAINTE ELISABETH</strong> » sis <strong>SAN PEDRO – STADE LAURENT POKOU</strong>, pour ${nbApptsArticle8>1 ? `<strong>${nbApptsArticle8} appartements</strong> (types ${typeLabelArticle8}, ${surfaceLabelArticle8} M² — voir annexe pour le détail)` : `un appartement de <strong>${inf.nb}</strong> pièces sur <strong>${inf.surface}</strong> M²`} à titre individuel, après avoir pris connaissance des conditions d'adhésion que j'accepte.</p>
+      ${c.gracieux ? `
+      <div class="prix-box">
+        <div><span style="font-weight:700;color:#7a5000">🎁 ATTRIBUTION GRACIEUSE</span> — Ce bien est cédé au souscripteur <strong>sans contrepartie financière</strong>, par décision de la société BATIR S.A. Aucun prix, aucun apport initial et aucun échéancier de paiement ne sont applicables au présent dossier.</div>
+      </div>` : `
       <div class="prix-box">
         <div><span style="font-weight:700">Prix du logement :</span> <span class="big">${fmt2(c.prix||0)} F CFA</span> <em style="color:#555;font-size:10pt">(${c.prixLettres||'…………………………'} francs CFA)</em></div>
         <div style="margin-top:6px"><span style="font-weight:700">Apport initial :</span> <strong style="color:#1a7a4a">${fmt2(c.apport||0)} F CFA</strong> &nbsp;&nbsp; <span style="font-weight:700">Reste à payer :</span> <strong style="color:#a32d2d">${fmt2(reste)} F CFA</strong></div>
         ${vg?`<div style="margin-top:6px"><span style="font-weight:700">Vague :</span> <span style="color:${vg.color};font-weight:800">🏗 V${c.vague} — ${vg.label} (${vg.mois} mois) · Mensualité : ${fmt2(mens)} F CFA</span></div>`:''}
-      </div>
+      </div>`}
       <p style="font-size:9.5pt;color:#555">*(Veuillez cocher les parties qui vous correspondent)</p>
       <p><strong>Comment avez-vous entendu parler de cette offre ?</strong> &nbsp; Amis ${emptyBox} &nbsp; Réseaux sociaux ${emptyBox} &nbsp; NON ${emptyBox} &nbsp; Autres ${emptyBox}</p>
       <div class="section-header">Engagements du souscripteur</div>
+      ${c.gracieux ? `
+      <div class="check">Reconnaître avoir reçu ce logement <b>à titre gracieux, sans contrepartie financière</b> de la part de la société BATIR S.A ;</div>
+      <div class="check">Utiliser le logement conformément à sa destination d'habitation, dans le respect des conditions générales de souscription annexées ;</div>
+      ` : `
       <div class="check">Avoir souscrit aux frais d'ouverture de dossier de <b>1% du coût du logement</b>, <b>non remboursables</b> ;</div>
       <div class="check">Effectuer <b>un versement de 20% du coût du logement</b> à titre d'apport initial (<span class="warn">maximum 30 jours après le paiement des frais d'ouverture de dossier</span>) ;</div>
       <div class="check">M'appliquer <b>une pénalité de 5% TTC sur</b> le montant de l'échéance en retard, en cas de non-respect de mon échéancier ;</div>
       <div class="check">En cas de désistement, me rembourser les sommes versées déduction faite <b>de 5% du coût du logement à titre d'indemnité d'immobilisation</b> ;</div>
+      `}
       <div class="check">Avoir pris connaissance des présentes conditions d'adhésion et les respecter ;</div>
       <div class="check">Avertir immédiatement la Société BATIR S.A de toute modification de mon statut et de mes activités si ceux-ci remettaient en cause mes engagements ci-dessus.</div>
     </div>
@@ -4621,11 +4693,15 @@ function buildPDF(c){
     ${header(dossier)}
     <div class="body">
       <h2>ARTICLE 9 : MODALITES DE PAIEMENT</h2>
+      ${c.gracieux ? `
+      <p><strong>Echéancier de paiement :</strong> Sans objet — ce logement étant cédé <strong>à titre gracieux</strong>, aucun paiement n'est dû par le souscripteur.</p>
+      ` : `
       <p><strong>Echéancier de paiement :</strong> (Veuillez préciser le montant & la période des Versements)</p>
       <table class="echeancier-table">
         <thead><tr><th style="width:70px;text-align:center">Versement</th><th>Montant</th><th>Date</th></tr></thead>
         <tbody>${versRows}</tbody>
       </table>
+      `}
       <div style="margin:14px 0;display:flex;gap:24px">
         <div><strong style="color:#00294d">✓ MODE DE LIVRAISON</strong><br>
           ${c.modeLivraison==='Clés en main'?checkedBox:emptyBox} Clés en main &nbsp;&nbsp;
