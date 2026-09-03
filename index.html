@@ -2642,7 +2642,7 @@ async function sauvegarder(){
     surface:        document.getElementById('f_surface').value,
     prix,
     prixLettres:    document.getElementById('f_prixLettres').value,
-    frais:          parseFloat(document.getElementById('f_frais').value)||FRAIS_DEF,
+    frais:          gracieux ? 0 : (parseFloat(document.getElementById('f_frais').value)||FRAIS_DEF),
     apport:         parseFloat(document.getElementById('f_apport').value)||0,
     modePaiement:   document.getElementById('f_modePaiement').value,
     gracieux:       document.getElementById('f_gracieux').checked,
@@ -2760,7 +2760,7 @@ function editerClient(id){
   toggleGracieux();
   document.getElementById('f_prix').value=c.prix||'';
   document.getElementById('f_prixLettres').value=c.prixLettres||'';
-  document.getElementById('f_frais').value=c.frais||FRAIS_DEF;
+  document.getElementById('f_frais').value=c.gracieux?0:(c.frais||FRAIS_DEF);
   document.getElementById('f_apport').value=c.apport||'';
   document.getElementById('f_modePaiement').value=c.modePaiement||'Espèces';
   document.getElementById('f_vague').value=c.vague||'';
