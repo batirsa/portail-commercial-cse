@@ -1572,7 +1572,8 @@ function pfProjetChange(){
   const codes = TYPES_PAR_PROJET[projet] || Object.keys(TYPES);
   sel.innerHTML = '<option value="">Choisir...</option>' + codes.map(t=>{
     const inf = TYPES[t];
-    return `<option value="${t}">${t} — ${inf.nb} pièces ${inf.surface} m²</option>`;
+    const libelle = t.startsWith('COL-') ? t.replace('COL-','').replace('PH','Penthouse — ') : (t.startsWith('PH') ? t.replace('PH','Penthouse — ') : t);
+    return `<option value="${t}">${libelle} — ${inf.nb} pièces ${inf.surface} m²</option>`;
   }).join('');
   pfReset(true);
 }
@@ -1639,6 +1640,7 @@ async function genererProforma(){
   const dateEdit = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   const dateValidite = new Date(Date.now()+30*24*60*60*1000).toLocaleDateString('fr-FR');
   const inf = TYPES[type] || {nb:'?',surface:'?'};
+  const libelleType = type.startsWith('COL-') ? type.replace('COL-','').replace('PH','Penthouse — ') : (type.startsWith('PH') ? type.replace('PH','Penthouse — ') : type);
   const frais = parseFloat(document.getElementById('pf_frais').value)||0;
 
   let lignesEcheancier = '';
@@ -1686,7 +1688,7 @@ async function genererProforma(){
       <tr><td style="width:35%;font-weight:700">Prospect</td><td>${nom||'……………………………'}</td></tr>
       <tr><td style="font-weight:700">Téléphone</td><td>${document.getElementById('pf_tel').value||'……………………………'}</td></tr>
       <tr><td style="font-weight:700">Programme</td><td>${NOMS_PROJET[document.getElementById('pf_projet').value]||'Cité Sainte-Élisabeth'} — San-Pedro</td></tr>
-      <tr><td style="font-weight:700">Type de bien</td><td>${type} — ${inf.nb} pièces sur ${inf.surface} m²</td></tr>
+      <tr><td style="font-weight:700">Type de bien</td><td>${libelleType} — ${inf.nb} pièces sur ${inf.surface} m²</td></tr>
     </table>
 
     <div class="prix-box">
