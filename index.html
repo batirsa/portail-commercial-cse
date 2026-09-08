@@ -671,6 +671,12 @@ textarea{resize:vertical;min-height:70px}
         <div class="form-grid">
           <div class="form-group"><label>Nom du prospect</label><input id="pf_nom" placeholder="NOM Prénom(s)"></div>
           <div class="form-group"><label>Téléphone</label><input id="pf_tel" placeholder="+225 07 00 00 00 00"></div>
+          <div class="form-group"><label>Cité *</label>
+            <select id="pf_projet" onchange="pfProjetChange()">
+              <option value="CSE">Cité Sainte-Élisabeth</option>
+              <option value="COLOMBE3">Cité Colombe 3</option>
+            </select>
+          </div>
           <div class="form-group"><label>Type de bien *</label>
             <select id="pf_type" onchange="pfTypeChange()"><option value="">Choisir...</option></select>
           </div>
@@ -1556,13 +1562,19 @@ async function supprimerLead(id){
 // (utile avant même la création d'un dossier).
 // ─────────────────────────────────────────────────────────────────
 function initProforma(){
+  document.getElementById('pf_projet').value = currentProjet;
+  pfProjetChange();
+}
+
+function pfProjetChange(){
+  const projet = document.getElementById('pf_projet').value;
   const sel = document.getElementById('pf_type');
-  const codes = TYPES_PAR_PROJET[currentProjet] || Object.keys(TYPES);
+  const codes = TYPES_PAR_PROJET[projet] || Object.keys(TYPES);
   sel.innerHTML = '<option value="">Choisir...</option>' + codes.map(t=>{
     const inf = TYPES[t];
     return `<option value="${t}">${t} — ${inf.nb} pièces ${inf.surface} m²</option>`;
   }).join('');
-  pfReset();
+  pfReset(true);
 }
 
 function pfTypeChange(){
@@ -1576,9 +1588,11 @@ function pfTypeChange(){
   pfCalculer();
 }
 
-function pfReset(){
-  document.getElementById('pf_nom').value='';
-  document.getElementById('pf_tel').value='';
+function pfReset(garderProspect){
+  if(!garderProspect){
+    document.getElementById('pf_nom').value='';
+    document.getElementById('pf_tel').value='';
+  }
   document.getElementById('pf_type').value='';
   document.getElementById('pf_surface').value='';
   document.getElementById('pf_prix').value='';
@@ -1671,7 +1685,7 @@ async function genererProforma(){
     <table class="info-table">
       <tr><td style="width:35%;font-weight:700">Prospect</td><td>${nom||'……………………………'}</td></tr>
       <tr><td style="font-weight:700">Téléphone</td><td>${document.getElementById('pf_tel').value||'……………………………'}</td></tr>
-      <tr><td style="font-weight:700">Programme</td><td>${NOMS_PROJET[currentProjet]||'Cité Sainte-Élisabeth'} — San-Pedro</td></tr>
+      <tr><td style="font-weight:700">Programme</td><td>${NOMS_PROJET[document.getElementById('pf_projet').value]||'Cité Sainte-Élisabeth'} — San-Pedro</td></tr>
       <tr><td style="font-weight:700">Type de bien</td><td>${type} — ${inf.nb} pièces sur ${inf.surface} m²</td></tr>
     </table>
 
