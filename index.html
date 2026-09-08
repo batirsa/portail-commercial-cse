@@ -220,6 +220,7 @@ textarea{resize:vertical;min-height:70px}
   <button class="nav-tab" onclick="goTab('nouveau',this)">➕ Nouveau client</button>
   <button class="nav-tab" onclick="goTab('prospection',this)">📅 Prospection</button>
   <button class="nav-tab" id="navLeads" onclick="goTab('leads',this)">📢 Leads pub <span id="leadsBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
+  <button class="nav-tab" onclick="goTab('proforma',this)">🧾 Proforma</button>
   <button class="nav-tab" id="navStock" onclick="goTab('stock',this)" style="display:none">🏢 Stock</button>
   <button class="nav-tab" id="navAdmin" onclick="goTab('admin',this)" style="display:none">🔐 Administration</button>
 </div>
@@ -654,6 +655,45 @@ textarea{resize:vertical;min-height:70px}
         <span id="leadsCount" style="align-self:center;font-size:12px;color:var(--gray);margin-left:auto"></span>
       </div>
       <div class="table-wrap"><table id="tLeads"></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ FACTURE PROFORMA ══ -->
+<div class="page" id="page-proforma">
+  <div class="card">
+    <div class="card-header"><div class="card-title">🧾 Facture Proforma</div></div>
+    <div class="card-body">
+      <p class="form-hint" style="margin-bottom:16px">Document indicatif et non contractuel, utile pour présenter une simulation de prix et d'échéancier à un prospect avant l'enregistrement définitif de son dossier.</p>
+
+      <div class="form-section">
+        <div class="form-section-title">👤 Prospect & bien concerné</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Nom du prospect</label><input id="pf_nom" placeholder="NOM Prénom(s)"></div>
+          <div class="form-group"><label>Téléphone</label><input id="pf_tel" placeholder="+225 07 00 00 00 00"></div>
+          <div class="form-group"><label>Type de bien *</label>
+            <select id="pf_type" onchange="pfTypeChange()"><option value="">Choisir...</option></select>
+          </div>
+          <div class="form-group"><label>Surface (m²)</label><input id="pf_surface" readonly style="background:#f7f8fa"></div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <div class="form-section-title">💰 Prix & modalités</div>
+        <div class="form-grid">
+          <div class="form-group"><label>Prix du logement (F CFA) *</label><input id="pf_prix" type="number" oninput="pfCalculer()" placeholder="75000000"></div>
+          <div class="form-group"><label>Frais de dossier (F CFA)</label><input id="pf_frais" type="number" value="200000" oninput="pfCalculer()"></div>
+          <div class="form-group"><label>Apport initial (F CFA)</label><input id="pf_apport" type="number" oninput="pfCalculer()" placeholder="15000000"></div>
+          <div class="form-group"><label>Nombre d'années *</label><input id="pf_annees" type="number" min="1" max="15" step="1" value="2" oninput="pfCalculer()"></div>
+        </div>
+      </div>
+
+      <div id="pfApercu" style="background:#e8f0f7;border-radius:8px;padding:14px 18px;margin:6px 0 18px;display:none"></div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-outline" onclick="pfReset()">↺ Réinitialiser</button>
+        <button class="btn btn-navy" onclick="genererProforma()">🖨 Générer la facture proforma</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1363,6 +1403,7 @@ function goTab(id, btn){
   if(id==='prospection') initProspection();
   if(id==='stock') chargerStockAdmin();
   if(id==='leads') chargerLeads();
+  if(id==='proforma') initProforma();
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -1507,6 +1548,162 @@ async function supprimerLead(id){
   }catch(e){
     toast(e.message || 'Erreur lors de la suppression.', 'danger');
   }
+}
+
+// ─────────────────────────────────────────────────────────────────
+// FACTURE PROFORMA — simulation de prix/échéancier pour un prospect,
+// document indicatif et non contractuel, indépendant du dossier client
+// (utile avant même la création d'un dossier).
+// ─────────────────────────────────────────────────────────────────
+function initProforma(){
+  const sel = document.getElementById('pf_type');
+  const codes = TYPES_PAR_PROJET[currentProjet] || Object.keys(TYPES);
+  sel.innerHTML = '<option value="">Choisir...</option>' + codes.map(t=>{
+    const inf = TYPES[t];
+    return `<option value="${t}">${t} — ${inf.nb} pièces ${inf.surface} m²</option>`;
+  }).join('');
+  pfReset();
+}
+
+function pfTypeChange(){
+  const t = document.getElementById('pf_type').value;
+  const inf = TYPES[t];
+  if(!inf){ document.getElementById('pf_surface').value=''; return; }
+  document.getElementById('pf_surface').value = inf.surface;
+  if(!document.getElementById('pf_prix').value && inf.prix){
+    document.getElementById('pf_prix').value = inf.prix;
+  }
+  pfCalculer();
+}
+
+function pfReset(){
+  document.getElementById('pf_nom').value='';
+  document.getElementById('pf_tel').value='';
+  document.getElementById('pf_type').value='';
+  document.getElementById('pf_surface').value='';
+  document.getElementById('pf_prix').value='';
+  document.getElementById('pf_frais').value=FRAIS_DEF;
+  document.getElementById('pf_apport').value='';
+  document.getElementById('pf_annees').value=2;
+  document.getElementById('pfApercu').style.display='none';
+}
+
+// Calcule l'échéancier sur la durée choisie (en années → mensualités égales,
+// le dernier mois absorbant l'arrondi pour que la somme tombe juste).
+function pfCalculerEcheancier(){
+  const prix = parseFloat(document.getElementById('pf_prix').value)||0;
+  const apport = parseFloat(document.getElementById('pf_apport').value)||0;
+  const annees = Math.max(1, parseInt(document.getElementById('pf_annees').value)||1);
+  const nbMois = annees*12;
+  const reste = Math.max(0, prix-apport);
+  const mensualite = nbMois ? Math.floor(reste/nbMois) : 0;
+  const dernierMois = reste - mensualite*(nbMois-1);
+  return { prix, apport, annees, nbMois, reste, mensualite, dernierMois };
+}
+
+function pfCalculer(){
+  const d = pfCalculerEcheancier();
+  const zone = document.getElementById('pfApercu');
+  if(!d.prix){ zone.style.display='none'; return; }
+  zone.style.display='block';
+  zone.innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;font-size:13px">
+      <div><div style="color:var(--gray);font-size:11px">RESTE À PAYER</div><div style="font-weight:800;color:#00294d;font-size:16px">${fmt(d.reste)} F</div></div>
+      <div><div style="color:var(--gray);font-size:11px">DURÉE</div><div style="font-weight:800;color:#00294d;font-size:16px">${d.annees} an${d.annees>1?'s':''} (${d.nbMois} mois)</div></div>
+      <div><div style="color:var(--gray);font-size:11px">MENSUALITÉ</div><div style="font-weight:800;color:#1a7a4a;font-size:16px">${fmt(d.mensualite)} F</div></div>
+    </div>`;
+}
+
+async function genererProforma(){
+  const nom = document.getElementById('pf_nom').value.trim();
+  const type = document.getElementById('pf_type').value;
+  const d = pfCalculerEcheancier();
+  if(!type){ toast('Choisissez un type de bien.','danger'); return; }
+  if(!d.prix){ toast('Le prix du logement est obligatoire.','danger'); return; }
+
+  const numProforma = 'PRO-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-5);
+  const dateEdit = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const dateValidite = new Date(Date.now()+30*24*60*60*1000).toLocaleDateString('fr-FR');
+  const inf = TYPES[type] || {nb:'?',surface:'?'};
+  const frais = parseFloat(document.getElementById('pf_frais').value)||0;
+
+  let lignesEcheancier = '';
+  for(let i=1;i<=d.nbMois;i++){
+    const montant = (i===d.nbMois) ? d.dernierMois : d.mensualite;
+    lignesEcheancier += `<tr><td style="text-align:center;font-weight:700;color:#00294d">${i}${i===1?'er':'ème'}</td><td style="font-weight:600;color:#1a7a4a">${fmt(montant)} F CFA</td></tr>`;
+  }
+
+  const html = `<!DOCTYPE html>
+<html lang="fr"><head><meta charset="UTF-8"><title>Facture Proforma — ${nom||'Prospect'}</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:Arial,sans-serif;font-size:11pt;color:#111;background:white}
+  .page{max-width:210mm;margin:0 auto;padding:16mm}
+  .header{display:flex;justify-content:space-between;align-items:flex-start}
+  .header-logo img{height:44px}
+  .header-sub{font-style:italic;color:#00294d;font-size:9pt;margin-top:2px}
+  .band{background:linear-gradient(to right,#dce8f2,#eef4f9);color:#1a3a5c;font-size:8pt;font-weight:700;text-align:center;padding:5px 10px;margin-top:6px;border-top:1px solid #b8cfe0;border-bottom:1px solid #b8cfe0}
+  h1{font-size:17pt;color:#00294d;text-align:center;margin:20px 0 4px}
+  .sub{text-align:center;color:#a32d2d;font-weight:700;font-size:10pt;margin-bottom:18px}
+  table.info-table{width:100%;border-collapse:collapse;margin:14px 0}
+  table.info-table td{border:1px solid #ccc;padding:6px 10px;font-size:10.5pt}
+  table.echeancier-table{width:100%;border-collapse:collapse;margin:14px 0}
+  table.echeancier-table th{background:#00294d;color:#fff;font-size:9pt;padding:6px}
+  table.echeancier-table td{border:1px solid #ddd;padding:5px 8px;font-size:10pt}
+  .prix-box{border:1.5px solid #f36f00;border-radius:6px;padding:10px 14px;margin:14px 0}
+  .footer-bar{background:#f7f8fa;border-top:1.5px solid #f36f00;padding:8px 14px;font-size:7.5pt;color:#888;text-align:center;margin-top:30px}
+  @media print{@page{size:A4 portrait;margin:0}.page{max-width:none}.no-print{display:none!important}}
+</style></head>
+<body>
+  <div class="page">
+    <div class="header">
+      <div>
+        <div class="header-logo"><img src="${LOGO_BATIR}" alt="BÂTIR S.A"></div>
+        <div class="header-sub">Des <span style="background:#f9d9b8">Références qui donnent de l'Assur</span>ance</div>
+      </div>
+      <div style="text-align:right;font-size:9pt;font-weight:700;color:#00294d">N° ${numProforma}<br><span style="font-weight:400;color:#888">Édité le ${dateEdit}</span></div>
+    </div>
+    <div class="band">Bâtiments, Contrôles, Travaux publics, Etudes techniques, Promotions Immobilières, Réaménagements, Ventes de terrains</div>
+
+    <h1>FACTURE PROFORMA</h1>
+    <div class="sub">⚠ Document indicatif et non contractuel — valable jusqu'au ${dateValidite}</div>
+
+    <table class="info-table">
+      <tr><td style="width:35%;font-weight:700">Prospect</td><td>${nom||'……………………………'}</td></tr>
+      <tr><td style="font-weight:700">Téléphone</td><td>${document.getElementById('pf_tel').value||'……………………………'}</td></tr>
+      <tr><td style="font-weight:700">Programme</td><td>${NOMS_PROJET[currentProjet]||'Cité Sainte-Élisabeth'} — San-Pedro</td></tr>
+      <tr><td style="font-weight:700">Type de bien</td><td>${type} — ${inf.nb} pièces sur ${inf.surface} m²</td></tr>
+    </table>
+
+    <div class="prix-box">
+      <div><strong>Prix du logement :</strong> <span style="font-size:14pt;font-weight:800;color:#00294d">${fmt(d.prix)} F CFA</span></div>
+      ${frais?`<div style="margin-top:4px"><strong>Frais de dossier :</strong> ${fmt(frais)} F CFA</div>`:''}
+      <div style="margin-top:4px"><strong>Apport initial :</strong> <span style="color:#1a7a4a;font-weight:700">${fmt(d.apport)} F CFA</span> &nbsp;&nbsp; <strong>Reste à financer :</strong> <span style="color:#a32d2d;font-weight:700">${fmt(d.reste)} F CFA</span></div>
+      <div style="margin-top:4px"><strong>Durée souhaitée :</strong> ${d.annees} an${d.annees>1?'s':''} (${d.nbMois} mensualités)</div>
+    </div>
+
+    <p style="font-size:10pt;font-weight:700;color:#00294d;margin-top:16px">Simulation d'échéancier sur ${d.annees} an${d.annees>1?'s':''} :</p>
+    <table class="echeancier-table">
+      <thead><tr><th style="width:100px">Mensualité</th><th>Montant estimé</th></tr></thead>
+      <tbody>${lignesEcheancier}</tbody>
+    </table>
+
+    <p style="font-size:9pt;color:#666;margin-top:10px">Cette simulation est fournie à titre purement indicatif et ne constitue ni une offre ferme, ni un engagement contractuel de la part de BATIR S.A. Le prix, l'apport initial et l'échéancier définitifs seront fixés lors de la signature du dossier de souscription officiel.</p>
+
+    <div class="footer-bar">
+      Siège Social : Cocody Riviera-Attoban ESPACE KAYLA 1<sup>er</sup> Etage, Appartement n°2 – 06 BP 1975 Abidjan 06
+      &nbsp;·&nbsp; Tél. : +225 27 22 43 67 24 / 22 43 75 53 &nbsp;·&nbsp; www.batir-sa.com &nbsp;·&nbsp; flash@batir-sa.com
+    </div>
+    <div class="no-print" style="text-align:center;margin-top:20px">
+      <button onclick="window.print()" style="background:#00294d;color:white;border:none;padding:12px 20px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨 Imprimer / Enregistrer en PDF</button>
+    </div>
+  </div>
+</body></html>`;
+
+  const blob = new Blob([html], {type:'text/html'});
+  const url = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  toast('✅ Facture proforma générée.','success');
 }
 
 // ─────────────────────────────────────────────────────────────────
