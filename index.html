@@ -455,6 +455,13 @@ textarea{resize:vertical;min-height:70px}
                 🎁 Attribution gracieuse (don) — aucun prix, aucun apport, aucun échéancier
               </label>
             </div>
+            <div class="form-group full" id="wrap_offre65" style="background:#fdeee6;border:1px solid #f3a77a;border-radius:8px;padding:12px 14px;margin-bottom:4px">
+              <label style="display:flex;align-items:center;gap:8px;font-weight:700;color:#a04000;cursor:pointer;margin-bottom:0">
+                <input type="checkbox" id="f_offre65" onchange="toggleOffre65()" style="width:auto">
+                🔥 Offre exceptionnelle — 65 appartements (F2 / F3 / F4) jusqu'au 31 décembre 2026
+              </label>
+              <div id="f_offre65Info" style="display:none;margin-top:10px;font-size:12px;line-height:1.6;color:#7a3300"></div>
+            </div>
             <div class="form-group full" id="wrap_typePrix">
               <label>Type de prix <span style="font-weight:400;color:var(--gray)">— pré-remplit le prix ci-dessous, modifiable ensuite pour négocier</span></label>
               <select id="f_typePrix" onchange="appliquerTypePrix()">
@@ -2118,7 +2125,7 @@ function renderListe(){
       <td><span class="badge badge-gold">${c.type||'—'}</span></td>
       <td style="font-family:monospace;font-size:12px">${c.porte||'—'}</td>
       <td>${vg?`<span class="badge" style="background:${vg.bg};color:${vg.color}">V${c.vague} · ${vg.mois}m</span>`:'—'}</td>
-      <td style="font-weight:700;font-size:12px">${c.gracieux?'<span class="badge" style="background:#fff8e1;color:#7a5000">🎁 Gracieux</span>':fmt(c.prix)+' F'}</td>
+      <td style="font-weight:700;font-size:12px">${c.gracieux?'<span class="badge" style="background:#fff8e1;color:#7a5000">🎁 Gracieux</span>':fmt(c.prix)+' F'}${badgeOffre(c)}</td>
       <td>${statutPaiementBadge(c)}</td>
       <td><span style="font-size:12px">${c.commercial||'—'}</span></td>
       <td style="white-space:nowrap">
@@ -2220,6 +2227,11 @@ function resetForm(){
   document.getElementById('f_apport').value='';
   document.getElementById('f_modePaiement').value='Espèces';
   document.getElementById('f_gracieux').checked = false;
+  document.getElementById('f_offre65').checked = false;
+  _offre65Expiree = false;
+  appliquerEtatOffre65UI(false);
+  toggleGracieux(); // remet à zéro le verrouillage des champs financiers (prix, frais, apport, mode de paiement)
+  document.getElementById('wrap_offre65').style.display = currentProjet==='CSE' ? '' : 'none';
   document.getElementById('f_modeLivraison').value='Clés en main';
   document.getElementById('f_optionFinition').value='Domotique';
   document.getElementById('f_cite').value = NOMS_PROJET[currentProjet] || 'Cité Sainte-Élisabeth';
@@ -2270,6 +2282,7 @@ function typeChange(){
     document.getElementById('apptChoisi').style.display = 'none';
     document.getElementById('apptNonChoisi').style.display = 'block';
   }
+  if(document.getElementById('f_offre65').checked) toggleOffre65({typeChange:true});
   if(!t) return;
   const inf = TYPES[t];
   document.getElementById('f_nbPieces').value = inf.nb;
@@ -2651,8 +2664,124 @@ function choisirAppartement(id){
 
 // Active/désactive le mode "Attribution gracieuse" : aucun prix, aucun apport,
 // aucun échéancier — l'appartement est cédé sans contrepartie financière.
+// ─── OFFRE EXCEPTIONNELLE — 65 APPARTEMENTS (Cité Sainte-Élisabeth) ───
+// Prix promotionnels sur 25 F2, 25 F3 et 15 F4, à condition de verser l'apport
+// initial obligatoire AVANT le 31/12/2026. Passé cette date, un dossier dont
+// l'apport n'est pas soldé repasse automatiquement au prix normal (calculé par
+// le serveur — voir routes/clients.js, qui fait foi sur ces montants).
+const OFFRE65 = {
+  dateLimite: '2026-12-31',
+  types: {
+    F2: { prixPromo: 23000000, prixNormal: 32000000, apport: 10000000 },
+    F3: { prixPromo: 38000000, prixNormal: 52000000, apport: 15000000 },
+    F4: { prixPromo: 57000000, prixNormal: 75000000, apport: 20000000 },
+  },
+};
+let _offre65Expiree = false; // dossier en cours de modification dont l'offre a expiré (prix normal déjà appliqué)
+
+// Texte contractuel de l'offre exceptionnelle pour un dossier (null si pas d'offre).
+// `c` est le dossier enrichi par le serveur : c.prix est DÉJÀ le prix applicable
+// (prix normal si l'offre a expiré).
+function texteOffreContrat(c, fmtN){
+  if(!c || !c.promoOffre) return null;
+  const limite = dateLongueFR(c.promoDateLimite||OFFRE65.dateLimite);
+  if(c.promoStatut==='Expirée'){
+    return `L'offre exceptionnelle (prix promotionnel de ${fmtN(c.prixPromo||0)} F CFA) n'ayant pas été maintenue — l'apport initial promotionnel de ${fmtN(c.promoApportRequis||0)} F CFA n'ayant pas été soldé au ${limite} — le <b>prix normal de ${fmtN(c.prix||0)} F CFA</b> est appliqué à ce dossier.`;
+  }
+  if(c.promoStatut==='Maintenue'){
+    return `Offre exceptionnelle : prix promotionnel de <b>${fmtN(c.prix||0)} F CFA</b> au lieu de ${fmtN(c.promoPrixNormal||0)} F CFA (prix normal). L'apport initial promotionnel de ${fmtN(c.promoApportRequis||0)} F CFA ayant été soldé dans les délais, ce prix promotionnel est définitivement acquis.`;
+  }
+  return `Offre exceptionnelle : prix promotionnel de <b>${fmtN(c.prix||0)} F CFA</b> au lieu de ${fmtN(c.promoPrixNormal||0)} F CFA (prix normal), <b>sous réserve du versement de l'apport initial de ${fmtN(c.promoApportRequis||0)} F CFA au plus tard le ${limite}</b>. À défaut, le prix normal de ${fmtN(c.promoPrixNormal||0)} F CFA est automatiquement appliqué au dossier.`;
+}
+
+function badgeOffre(c){
+  if(!c || !c.promoOffre) return '';
+  if(c.promoStatut==='Expirée') return '<div><span class="badge" style="background:#fdeaea;color:#a32d2d;font-size:10px">⏰ Promo expirée</span></div>';
+  if(c.promoStatut==='Maintenue') return '<div><span class="badge" style="background:#e8f5ee;color:#1a7a4a;font-size:10px">✅ Promo acquise</span></div>';
+  return '<div><span class="badge" style="background:#fdeee6;color:#a04000;font-size:10px">🔥 Promo jusqu\'au '+(c.promoDateLimite||OFFRE65.dateLimite).split('-').reverse().join('/')+'</span></div>';
+}
+
+function dateLongueFR(iso){
+  return new Date(iso+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'});
+}
+
+// Ne gère que l'APPARENCE du formulaire (verrouillage du prix, encadré d'info) —
+// les valeurs (prix, apport) sont posées par toggleOffre65 ou editerClient.
+function appliquerEtatOffre65UI(actif, opts){
+  opts = opts || {};
+  const prix = document.getElementById('f_prix');
+  const typePrixWrap = document.getElementById('wrap_typePrix');
+  const info = document.getElementById('f_offre65Info');
+  const verrouille = actif && !opts.expiree;
+  prix.readOnly = verrouille;
+  prix.style.background = verrouille ? '#f7f8fa' : '';
+  typePrixWrap.style.display = actif ? 'none' : '';
+  info.style.display = actif ? 'block' : 'none';
+  if(actif && opts.html) info.innerHTML = opts.html;
+}
+
+function htmlInfoOffre65(type, places){
+  const conf = OFFRE65.types[type];
+  if(!conf) return '';
+  const limite = dateLongueFR(OFFRE65.dateLimite);
+  let h = `Prix normal : <s>${fmt(conf.prixNormal)} F</s> → <b>${fmt(conf.prixPromo)} F</b> (économie de ${fmt(conf.prixNormal-conf.prixPromo)} F)<br>`
+        + `Apport initial obligatoire : <b>${fmt(conf.apport)} F</b>, à verser <b>au plus tard le ${limite}</b>.<br>`
+        + `⚠️ Si l'apport n'est pas soldé à cette date, le dossier repasse <b>automatiquement au prix normal</b> (${fmt(conf.prixNormal)} F).`;
+  const pl = places && places.types && places.types[type];
+  if(pl) h += `<br>📊 Places restantes ${type} : <b>${pl.restantes} / ${pl.quota}</b>`;
+  return h;
+}
+
+async function toggleOffre65(opts){
+  opts = opts || {};
+  const cb = document.getElementById('f_offre65');
+  const prix = document.getElementById('f_prix');
+  const apport = document.getElementById('f_apport');
+  const prixLettres = document.getElementById('f_prixLettres');
+
+  if(cb.checked){
+    const type = document.getElementById('f_type').value;
+    const conf = OFFRE65.types[type];
+    const refuser = (msg)=>{
+      toast(msg,'warning');
+      cb.checked = false;
+      appliquerEtatOffre65UI(false);
+      prix.value = _prixPrincipalCatalogue || '';
+      calcFinancier(); updateRecap();
+    };
+    if(!conf) return refuser("Choisissez d'abord un type F2, F3 ou F4 : l'offre ne concerne pas les autres types.");
+    if(document.getElementById('f_gracieux').checked) return refuser("Une attribution gracieuse ne peut pas être combinée à l'offre exceptionnelle.");
+    if(_apptsSupp.length) return refuser("L'offre s'applique à un seul appartement par dossier (pas d'achat groupé).");
+
+    let places = null;
+    try{
+      places = await apiFetch('/clients/offre65/places');
+      if(places.terminee) return refuser("L'offre exceptionnelle est terminée (31 décembre 2026).");
+      if(places.types[type] && places.types[type].restantes <= 0 && !_editId) return refuser(`Les places de l'offre exceptionnelle ${type} sont toutes prises.`);
+    }catch(e){ /* non bloquant : le serveur revalide de toute façon à l'enregistrement */ }
+
+    prix.value = conf.prixPromo;
+    prixLettres.value = '';
+    const apportActuel = parseFloat(apport.value)||0;
+    apport.value = (opts.typeChange || apportActuel < conf.apport) ? conf.apport : apportActuel;
+    _prixEstCNPS = false;
+    appliquerEtatOffre65UI(true, { html: htmlInfoOffre65(type, places) });
+  } else {
+    appliquerEtatOffre65UI(false);
+    prix.value = _prixPrincipalCatalogue || '';
+    apport.value = '';
+    prixLettres.value = '';
+  }
+  calcFinancier();
+  updateRecap();
+}
+
 function toggleGracieux(){
   const g = document.getElementById('f_gracieux').checked;
+  // Offre exceptionnelle et attribution gracieuse s'excluent mutuellement.
+  const cbOffre = document.getElementById('f_offre65');
+  if(g && cbOffre.checked){ cbOffre.checked = false; appliquerEtatOffre65UI(false); }
+  cbOffre.disabled = g;
   const prix = document.getElementById('f_prix');
   const frais = document.getElementById('f_frais');
   const apport = document.getElementById('f_apport');
@@ -2771,7 +2900,7 @@ function updateRecap(){
       ${gracieux ? `
       <div class="fiche-item" style="grid-column:1/-1"><div class="fiche-label">Transaction</div><div class="fiche-value" style="color:#7a5000">🎁 Attribution gracieuse</div></div>
       ` : `
-      <div class="fiche-item"><div class="fiche-label">Prix</div><div class="fiche-value" style="color:var(--navy)">${fmtM(prix)} F</div></div>
+      <div class="fiche-item"><div class="fiche-label">Prix</div><div class="fiche-value" style="color:var(--navy)">${fmtM(prix)} F${document.getElementById('f_offre65').checked?' 🔥':''}</div></div>
       <div class="fiche-item"><div class="fiche-label">Apport</div><div class="fiche-value" style="color:var(--success)">${fmtM(apport)} F</div></div>
       `}
     </div>
@@ -2801,6 +2930,15 @@ async function sauvegarder(){
   const prix=parseFloat(document.getElementById('f_prix').value)||0;
   const gracieux = document.getElementById('f_gracieux').checked;
   if(!prix && !gracieux){ toast('Le prix du logement est obligatoire.','danger'); return; }
+  const offre65 = document.getElementById('f_offre65').checked;
+  if(offre65){
+    const confOffre = OFFRE65.types[document.getElementById('f_type').value];
+    if(!confOffre){ toast("L'offre exceptionnelle ne concerne que les types F2, F3 et F4.",'danger'); return; }
+    if(_apptsSupp.length){ toast("L'offre exceptionnelle s'applique à un seul appartement par dossier : retirez les appartements supplémentaires.",'danger'); return; }
+    if(!_offre65Expiree && (parseFloat(document.getElementById('f_apport').value)||0) < confOffre.apport){
+      toast(`L'apport initial doit être d'au moins ${fmt(confOffre.apport)} F CFA pour bénéficier de l'offre.`,'danger'); return;
+    }
+  }
   const stockId = document.getElementById('f_stockId').value;
   if(!stockId && !_editId){ toast('Merci de choisir un appartement disponible dans le stock.','danger'); return; }
 
@@ -2859,6 +2997,7 @@ async function sauvegarder(){
     apport:         parseFloat(document.getElementById('f_apport').value)||0,
     modePaiement:   document.getElementById('f_modePaiement').value,
     gracieux:       document.getElementById('f_gracieux').checked,
+    promoOffre:     offre65,
     vague:          parseInt(document.getElementById('f_vague').value)||0,
     modeLivraison:  document.getElementById('f_modeLivraison').value,
     optionFinition: document.getElementById('f_optionFinition').value,
@@ -2971,6 +3110,20 @@ function editerClient(id){
   }
   document.getElementById('f_gracieux').checked = !!c.gracieux;
   toggleGracieux();
+  document.getElementById('wrap_offre65').style.display = (c.projet||currentProjet)==='CSE' ? '' : 'none';
+  document.getElementById('f_offre65').checked = !!c.promoOffre;
+  _offre65Expiree = c.promoStatut==='Expirée';
+  if(c.promoOffre){
+    const limite = dateLongueFR(c.promoDateLimite||OFFRE65.dateLimite);
+    const htmlEtat = _offre65Expiree
+      ? `⏰ <b>Offre expirée</b> : l'apport promotionnel n'a pas été soldé au ${limite} — le <b>prix normal (${fmt(c.prix)} F)</b> est appliqué automatiquement. Pensez à recalculer l'échéancier.`
+      : (c.promoStatut==='Maintenue'
+          ? `✅ <b>Apport promotionnel soldé</b> avant le ${limite} — le prix promotionnel de <b>${fmt(c.prix)} F</b> est garanti.`
+          : `Prix normal : <s>${fmt(c.promoPrixNormal)} F</s> → <b>${fmt(c.prix)} F</b>. Apport obligatoire : <b>${fmt(c.promoApportRequis)} F</b> (déjà versé : ${fmt(c.promoApportVerse||0)} F) au plus tard le <b>${limite}</b>, sinon retour automatique au prix normal.`);
+    appliquerEtatOffre65UI(true, { expiree:_offre65Expiree, html:htmlEtat });
+  } else {
+    appliquerEtatOffre65UI(false);
+  }
   document.getElementById('f_prix').value=c.prix||'';
   document.getElementById('f_prixLettres').value=c.prixLettres||'';
   document.getElementById('f_frais').value=c.gracieux?0:(c.frais||FRAIS_DEF);
@@ -3662,6 +3815,7 @@ function voirFiche(id){
   document.getElementById('mFicheTitle').textContent=`📋 Fiche — ${c.nom}`;
   document.getElementById('mFicheBody').innerHTML=`
     <div class="fiche-band">📁 Dossier ${c.dossier||'—'} · Souscription du ${c.dateSign||'—'}</div>
+    ${c.promoOffre ? `<div style="margin:8px 0 12px;padding:10px 14px;border-radius:8px;font-size:12px;line-height:1.6;background:${c.promoStatut==='Expirée'?'#fdeaea':(c.promoStatut==='Maintenue'?'#e8f5ee':'#fdeee6')};color:${c.promoStatut==='Expirée'?'#a32d2d':(c.promoStatut==='Maintenue'?'#1a7a4a':'#7a3300')}">${c.promoStatut==='Expirée'?'⏰':(c.promoStatut==='Maintenue'?'✅':'🔥')} ${texteOffreContrat(c, fmt)}${c.echeancierObsolete?'<br>⚠️ L\'échéancier enregistré date de l\'offre : à recalculer.':''}</div>` : ''}
 
     <div style="font-size:12px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;margin-top:4px">Identification${c.typeSouscripteur==='entreprise'?' — Entreprise':''}</div>
     <div class="fiche-grid">
@@ -4155,6 +4309,7 @@ function buildContratReservation(c){
       <p>Le prix global, forfaitaire et convenu ${nbAppts>1?`des ${nbAppts} appartements`:`du bien`}, parking compris, est fixé à ${(c.prixLettres||'……………').toUpperCase()} (${fmt2(prixTotal)}) DE FRANCS CFA.</p>
       <p>Ce prix est ferme, définitif et non révisable. Il ne pourra faire l'objet d'aucune augmentation, indexation ou réévaluation, quelle qu'en soit la cause, sauf travaux supplémentaires expressément demandés par LE RÉSERVATAIRE et préalablement acceptés par écrit quant à leur nature et leur prix.</p>
       <p>Les parties reconnaissent expressément que ce prix constitue la condition commerciale particulière définitivement consentie au RÉSERVATAIRE pour le bien objet des présentes.</p>
+      ${c.promoOffre ? `<p style="background:#fdeee6;border-left:3px solid #f3a77a;padding:6px 10px">${texteOffreContrat(c, fmt2)}</p>` : ''}
 
       <h2 style="margin-top:18px">ARTICLE CINQ<br><span style="font-size:10pt">MODALITÉS DE PAIEMENT - PÉNALITÉS DE RETARD</span></h2>
       <p>Le prix sera réglé comme suit :</p>
@@ -4884,6 +5039,7 @@ function buildPDF(c){
         <div><span style="font-weight:700">Prix du logement :</span> <span class="big">${fmt2(c.prix||0)} F CFA</span> <em style="color:#555;font-size:10pt">(${c.prixLettres||'…………………………'} francs CFA)</em></div>
         <div style="margin-top:6px"><span style="font-weight:700">Apport initial :</span> <strong style="color:#1a7a4a">${fmt2(c.apport||0)} F CFA</strong> &nbsp;&nbsp; <span style="font-weight:700">Reste à payer :</span> <strong style="color:#a32d2d">${fmt2(reste)} F CFA</strong></div>
         ${vg?`<div style="margin-top:6px"><span style="font-weight:700">Vague :</span> <span style="color:${vg.color};font-weight:800">🏗 V${c.vague} — ${vg.label} (${vg.mois} mois) · Mensualité : ${fmt2(mens)} F CFA</span></div>`:''}
+        ${c.promoOffre ? `<div style="margin-top:8px;padding:6px 8px;background:#fdeee6;border-radius:4px;font-size:9.5pt">${texteOffreContrat(c, fmt2)}</div>` : ''}
       </div>`}
       <p style="font-size:9.5pt;color:#555">*(Veuillez cocher les parties qui vous correspondent)</p>
       <p><strong>Comment avez-vous entendu parler de cette offre ?</strong> &nbsp; Amis ${emptyBox} &nbsp; Réseaux sociaux ${emptyBox} &nbsp; NON ${emptyBox} &nbsp; Autres ${emptyBox}</p>
@@ -4893,7 +5049,9 @@ function buildPDF(c){
       <div class="check">Utiliser le logement conformément à sa destination d'habitation, dans le respect des conditions générales de souscription annexées ;</div>
       ` : `
       <div class="check">Avoir souscrit aux frais d'ouverture de dossier de <b>1% du coût du logement</b>, <b>non remboursables</b> ;</div>
-      <div class="check">Effectuer <b>un versement de 20% du coût du logement</b> à titre d'apport initial (<span class="warn">maximum 30 jours après le paiement des frais d'ouverture de dossier</span>) ;</div>
+      ${(c.promoOffre && c.promoStatut!=='Expirée')
+        ? `<div class="check">Effectuer <b>l'apport initial promotionnel de ${fmt2(c.promoApportRequis||0)} F CFA</b> (offre exceptionnelle) <span class="warn">au plus tard le ${dateLongueFR(c.promoDateLimite||OFFRE65.dateLimite)}</span>, à défaut de quoi le prix normal sera appliqué ;</div>`
+        : `<div class="check">Effectuer <b>un versement de 20% du coût du logement</b> à titre d'apport initial (<span class="warn">maximum 30 jours après le paiement des frais d'ouverture de dossier</span>) ;</div>`}
       <div class="check">M'appliquer <b>une pénalité de 5% TTC sur</b> le montant de l'échéance en retard, en cas de non-respect de mon échéancier ;</div>
       <div class="check">En cas de désistement, me rembourser les sommes versées déduction faite <b>de 5% du coût du logement à titre d'indemnité d'immobilisation</b> ;</div>
       `}
