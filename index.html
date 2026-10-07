@@ -1482,7 +1482,7 @@ function renderLeads(){
       const interesseBadge = l.interesse==='oui' ? '<span class="badge" style="background:#e8f5ee;color:#1a7a4a">✓ Oui</span>' : '<span class="badge" style="background:#f1f1f1;color:#888">Non</span>';
       return `<tr>
         <td style="font-size:11px;white-space:nowrap">${date}</td>
-        <td><strong>${l.nom}</strong></td>
+        <td><strong>${l.nom}</strong>${/offre/i.test(l.source||'')?'<br><span class="badge" style="background:#fdeee6;color:#a04000;font-size:10px" title="'+(l.source||'').replace(/"/g,'')+'">🔥 Offre 65</span>':''}</td>
         <td style="font-size:12px">${l.profession||'—'}${l.employeur?' · '+l.employeur:''}</td>
         <td style="font-size:12px">📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
         <td>${interesseBadge}</td>
