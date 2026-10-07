@@ -1425,6 +1425,14 @@ function goTab(id, btn){
 let LEADS = [];
 let EQUIPE_COMMERCIALE = []; // liste des commerciaux du projet, pour attribution manuelle par le Chef d'agence
 
+// Repère visible sur les leads arrivés par la campagne « Offre 65 appartements »
+// (source enregistrée par la page publique quand elle est ouverte avec ?offre=65).
+function badgeLeadOffre(l){
+  const src = (l && l.source) || '';
+  if(!/offre/i.test(src)) return '';
+  return '<br><span class="badge" style="background:#fdeee6;color:#a04000;font-size:10px" title="'+src.replace(/"/g,'')+'">🔥 Offre 65</span>';
+}
+
 async function chargerLeads(){
   const tbl = document.getElementById('tLeads');
   if(tbl) tbl.innerHTML = '<tr><td style="padding:20px;text-align:center;color:var(--gray)">Chargement...</td></tr>';
@@ -1482,7 +1490,7 @@ function renderLeads(){
       const interesseBadge = l.interesse==='oui' ? '<span class="badge" style="background:#e8f5ee;color:#1a7a4a">✓ Oui</span>' : '<span class="badge" style="background:#f1f1f1;color:#888">Non</span>';
       return `<tr>
         <td style="font-size:11px;white-space:nowrap">${date}</td>
-        <td><strong>${l.nom}</strong>${/offre/i.test(l.source||'')?'<br><span class="badge" style="background:#fdeee6;color:#a04000;font-size:10px" title="'+(l.source||'').replace(/"/g,'')+'">🔥 Offre 65</span>':''}</td>
+        <td><strong>${l.nom}</strong>${badgeLeadOffre(l)}</td>
         <td style="font-size:12px">${l.profession||'—'}${l.employeur?' · '+l.employeur:''}</td>
         <td style="font-size:12px">📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
         <td>${interesseBadge}</td>
@@ -2046,7 +2054,7 @@ function renderLeadsDashboard(leads){
           <table style="width:100%;font-size:12px">
             <thead><tr><th>Nom</th><th>Contact</th><th>Statut</th><th>Reçu le</th><th>Compte rendu</th></tr></thead>
             <tbody>${parComm[nom].map(l=>`<tr>
-              <td>${l.nom}</td>
+              <td>${l.nom}${badgeLeadOffre(l)}</td>
               <td>📞 ${l.contact}${l.whatsapp?'<br>💬 '+l.whatsapp:''}</td>
               <td>${l.statut||'—'}</td>
               <td>${l.createdAt ? new Date(l.createdAt).toLocaleDateString('fr-FR') : '—'}</td>
@@ -3678,7 +3686,7 @@ function renderResumeHebdo(rapports, planning, leads, lundi){
             '<thead><tr style="color:var(--gray);text-align:left;border-bottom:1px solid #eee"><th style="padding:4px 6px">Nom</th><th style="padding:4px 6px">Contact</th><th style="padding:4px 6px">Statut</th><th style="padding:4px 6px">Compte rendu</th></tr></thead>'+
             '<tbody>'+parCommLeads[nom].liste.map(l=>
               '<tr style="border-bottom:1px solid #f2f2f2">'+
-                '<td style="padding:4px 6px"><strong>'+l.nom+'</strong></td>'+
+                '<td style="padding:4px 6px"><strong>'+l.nom+'</strong>'+badgeLeadOffre(l)+'</td>'+
                 '<td style="padding:4px 6px;white-space:nowrap">📞 '+l.contact+(l.whatsapp?'<br>💬 '+l.whatsapp:'')+'</td>'+
                 '<td style="padding:4px 6px">'+(l.statut||'—')+'</td>'+
                 '<td style="padding:4px 6px;white-space:pre-wrap;color:'+(l.compteRendu?'#333':'var(--gray)')+'">'+(l.compteRendu||'—')+'</td>'+
