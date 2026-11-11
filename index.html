@@ -208,7 +208,7 @@ textarea{resize:vertical;min-height:70px}
     <div class="session-badge" id="sessionBadge"></div>
     <button class="btn btn-outline btn-sm" onclick="chargerClients().then(()=>{renderDashboard();renderListe();})" title="Recharger les données depuis le serveur">🔄</button>
     <button class="btn btn-outline btn-sm" onclick="genererDossierVierge()" title="Fiche des conditions générales de souscription, vierge, à remettre à un prospect">📄 Fiche vierge</button>
-    <button class="btn btn-outline btn-sm" onclick="genererFicheIdentification()" title="Dossier de souscription (3 pages) à faire remplir par le client : identification, adhésion, souscription et échéancier">🖋️ Dossier de souscription</button>
+    <button class="btn btn-outline btn-sm" onclick="genererFicheIdentification()" title="Dossier de souscription à faire remplir par le client : identification, adhésion, souscription et échéancier (fiche terrain intégrée)">🖋️ Dossier de souscription</button>
     <button class="btn btn-outline btn-sm" onclick="exporterExcel()">⬇ Excel</button>
   </div>
 </div>
@@ -4511,7 +4511,8 @@ function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 // DOSSIER DE SOUSCRIPTION — Cité Sainte-Élisabeth (3 pages A4 à faire
 // remplir à la main par le client : fiche d'identification, demande
 // d'adhésion et fiche de souscription avec échéancier). Remplace l'ancienne
-// « fiche terrain ». Sert de base pour l'enregistrement numérique du dossier.
+// « fiche terrain » dont tous les champs (entreprise, co-souscripteur, mineur,
+// appartements supplémentaires...) sont intégrés directement. Sert de base pour l'enregistrement numérique du dossier.
 // ─────────────────────────────────────────────────────────────────
 function genererFicheIdentification(){
   const css = `
@@ -4534,17 +4535,17 @@ function genererFicheIdentification(){
     .box .n{font-size:12pt;font-weight:700;color:#EB6530}.box .n span{color:#343B58}
     .box .s{font-size:9.5pt;color:#3A3F52}
     .note{text-align:center;font-size:8pt;font-style:italic;color:#6B7080;margin:1.5mm 0 0}
-    .sec{display:flex;align-items:stretch;background:#343B58;color:#fff;font-weight:700;letter-spacing:.2em;font-size:7.8pt;margin:3.2mm 0 .8mm}
+    .sec{display:flex;align-items:stretch;background:#343B58;color:#fff;font-weight:700;letter-spacing:.2em;font-size:7.8pt;margin:2.6mm 0 .6mm}
     .sec b{background:#EB6530;min-width:9mm;text-align:center;padding:1.4mm 0;margin-right:3mm;letter-spacing:0}
     .sec span{padding:1.4mm 0}
-    .row{display:flex;align-items:flex-end;gap:3mm;min-height:6.6mm;padding-top:1mm}
+    .row{display:flex;align-items:flex-end;gap:3mm;min-height:6.1mm;padding-top:.7mm}
     .row .l{color:#3A3F52;font-size:9pt;white-space:nowrap}
     .row .v{flex:1;border-bottom:1px dotted #7F869C;min-height:5mm}
     .row .l.w1{width:50mm}
     .row .l.w2{width:50mm}
-    .sg{display:flex;gap:6mm;margin-top:3mm}
+    .sg{display:flex;gap:5mm;margin-top:3mm}
     .sg>div{flex:1}
-    .sigb{border:1px solid #9aa1b5;height:25mm;margin-top:1.5mm}
+    .sigb{border:1px solid #9aa1b5;height:21mm;margin-top:1.5mm}
     .sigt{font-weight:700;letter-spacing:.2em;color:#343B58;font-size:8pt;text-align:center}
     .sigs{font-style:italic;font-size:7pt;color:#6B7080;text-align:center}
     .fait{text-align:right;font-size:9pt;margin-top:3mm}
@@ -4564,11 +4565,16 @@ function genererFicheIdentification(){
     .cols{display:flex;gap:7mm}.cols>div{flex:1}
     table.ech{width:100%;border-collapse:collapse;font-size:8.5pt}
     table.ech th{background:#343B58;color:#fff;font-size:7pt;letter-spacing:.12em;padding:1.4mm;text-align:center}
-    table.ech td{border:1px solid #c9cedb;height:8.2mm;text-align:center;color:#7F869C}
+    table.ech td{border:1px solid #c9cedb;height:6.8mm;text-align:center;color:#7F869C}
     table.ech td.n{color:#EB6530;font-weight:700;width:11mm}
     table.ech tr:nth-child(even) td{background:#F3F4F7}
     .nb{background:#F3F4F7;border-left:4px solid #EB6530;padding:2.2mm 3mm;font-size:9pt;line-height:1.35;margin-top:3.5mm;text-align:justify}
     .nb b.o{color:#EB6530}.nb b{color:#343B58}
+    table.tb{width:100%;border-collapse:collapse;font-size:8.5pt;margin-top:1mm}
+    table.tb th{background:#343B58;color:#fff;font-size:7pt;letter-spacing:.1em;padding:1.3mm;text-align:center}
+    table.tb td{border:1px solid #c9cedb;height:6mm}
+    .obs{border:1px solid #9aa1b5;height:14mm;margin-top:1mm}
+    .hint{font-size:8pt;font-style:italic;color:#6B7080;font-weight:400;letter-spacing:0;margin-left:2mm}
     @media print{.pg{margin:0}}
   `;
   const L = (l,w) => `<div class="row"><span class="l${w?' '+w:''}">${l}</span><span class="v"></span></div>`;
@@ -4576,34 +4582,60 @@ function genererFicheIdentification(){
   const SEC = (n,t) => `<div class="sec"><b>${n}</b><span>${t}</span></div>`;
   const HD = `<div class="hd"><img src="${LOGO_BATIR}" alt="BÂTIR S.A"><div class="r"><b>Des Références qui donnent de l’Assurance</b>Bâtiments · Contrôles · Travaux publics · Études techniques<br>Promotions immobilières · Réaménagements · Ventes de terrains</div></div>`;
   const FT = `<div class="ft"><b>BÂTIR S.A.</b> — Siège social : Cocody Riviera-Attoban, Espace KAYLA, 1<sup>er</sup> étage, appartement n°2 — 06 BP 1975 Abidjan 06<br>Agence de San-Pédro : immeuble Mohikakro, 3<sup>e</sup> étage — Tél. : +225 27 22 43 67 24 — www.batir-sa.com — flash@batir-sa.com<br>RCCM : CI-ABJ-2010-B-6874 — CC N° 1100496 W</div>`;
-  const BOX = `<div class="box"><div class="k">PROMOTION IMMOBILIÈRE DES RÉSIDENCES BÂTIR</div><div class="n">CITÉ SAINTE-ÉLISABETH <span>&nbsp;—&nbsp; SAN-PÉDRO</span></div><div class="s">Appartements F2, F3 et F4</div></div><div class="note">À remplir complètement et lisiblement</div>`;
+  const BOXF = (note) => `<div class="box"><div class="k">PROMOTION IMMOBILIÈRE DES RÉSIDENCES BÂTIR</div><div class="n">CITÉ SAINTE-ÉLISABETH <span>&nbsp;—&nbsp; SAN-PÉDRO</span></div><div class="s">Appartements F2, F3 et F4</div></div><div class="note">${note}</div>`;
+  const BOX = BOXF('À remplir complètement et lisiblement');
   const NV = ' ';
   const ord = n => n===1 ? '1<sup>er</sup>' : n+'<sup>e</sup>';
   const lig = n => `<tr><td class="n">${ord(n)}</td><td></td><td>……/……/…………</td></tr>`;
   const tab = (a,b) => `<table class="ech"><tr><th>N°</th><th>MONTANT (F CFA)</th><th>DATE</th></tr>${Array.from({length:b-a+1},(_,i)=>lig(a+i)).join('')}</table>`;
 
+  const R = (...a) => `<div class="row">${a.map(l=>`<span class="l">${l}</span><span class="v"></span>`).join('')}</div>`;
+  const CK = (t,st) => `<span class="l" style="font-weight:700;color:#343B58;${st||''}"><span class="ck"></span>${t}</span>`;
+  const H = '<span class="hint">';
+  const tb5 = `<table class="tb"><tr><th>ÎLOT</th><th>BÂTIMENT</th><th>ÉTAGE</th><th>N° APPT</th><th>TYPE</th><th>SURFACE (m²)</th></tr>${Array.from({length:6}).map(()=>'<tr><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('')}</table>`;
+
+  // ── PAGE 1 : FICHE D'IDENTIFICATION ───────────────────────────────
   const p1 = `<div class="pg">${HD}<div class="ct">
     <div class="title">FICHE D’IDENTIFICATION</div>${BOX}
-    ${SEC(1,'ÉTAT CIVIL')}
-    ${L('Nom et prénom(s)','w1')}${L('Date et lieu de naissance','w1')}${L('Nationalité','w1')}${L('Pièce d’identité N°','w1')}
-    ${L2('Date de délivrance','Lieu de délivrance')}${L('Matricule','w1')}
-    ${SEC(2,'COORDONNÉES')}
-    ${L('Adresse domicile','w1')}${L('Ville et quartier de résidence','w1')}${L('Email','w1')}${L2('Téléphone','Cellulaire')}
-    ${SEC(3,'SITUATION PROFESSIONNELLE')}
-    ${L2('Profession','Département d’activité')}${L('Lieu d’exercice de l’activité','w1')}${L('Employeur','w1')}${L('Adresse employeur','w1')}${L('Téléphone employeur','w1')}${L('Début de l’activité professionnelle','w1')}${L('Date de mise à la retraite','w1')}
-    ${SEC(4,'SUIVI COMMERCIAL')}
-    ${L('Nom du commercial sollicité','w1')}
-    <div class="fait" style="margin-top:6mm">Fait à San-Pédro, le <i>……………………………………</i></div>
-    <div class="sigt" style="text-align:left;margin-left:98mm;margin-top:2mm;letter-spacing:0;font-size:9pt">Le souscripteur</div>
-    <div class="sigb" style="margin-left:98mm;height:28mm"></div>
+    ${R('Date de la visite','Commercial sollicité','Lieu du rendez-vous')}
+    ${SEC(1,'TYPE DE SOUSCRIPTEUR')}
+    <div class="row" style="gap:14mm">${CK('Particulier')}${CK('Entreprise')}</div>
+    ${SEC(2,'ÉTAT CIVIL')}
+    ${L('Nom et prénom(s)','w1')}
+    ${R('Date et lieu de naissance','Nationalité')}
+    ${R('Situation matrimoniale','Matricule')}
+    ${R('Pièce d’identité N°','Validité')}
+    ${R('Date de délivrance','Lieu de délivrance')}
+    ${SEC(3,'COORDONNÉES')}
+    ${L('Adresse domicile','w1')}
+    ${R('Ville et quartier de résidence','Email')}
+    ${R('Téléphone','Cellulaire')}
+    ${L('Contact en cas d’absence (nom + téléphone)','w1')}
+    ${SEC(4,'SITUATION PROFESSIONNELLE')}
+    ${R('Profession','Département d’activité')}
+    ${R('Employeur','Adresse employeur')}
+    ${R('Lieu d’exercice de l’activité','Téléphone employeur')}
+    ${R('Début de l’activité','Date de mise à la retraite')}
+    ${SEC(5,'ENTREPRISE '+H+'(si le souscripteur est une entreprise)</span>')}
+    ${R('Raison sociale','N° RCCM')}
+    ${R('Secteur d’activité','Siège social')}
+    ${R('Représentant légal — Nom','Fonction')}
+    ${SEC(6,'CO-SOUSCRIPTEUR '+H+'(souscription conjointe Mr &amp; Mme — sinon laisser vide)</span>')}
+    ${L('Nom et prénom(s) du co-souscripteur','w1')}
+    ${R('Date de naissance','N° CNI / Passeport')}
+    ${R('Profession','Téléphone')}
+    ${SEC(7,'REPRÉSENTANT LÉGAL '+H+'(si le souscripteur est mineur — sinon laisser vide)</span>')}
+    ${R('Nom et prénom(s) (parent / tuteur)','Lien de parenté')}
+    ${R('N° CNI / Passeport','Téléphone')}
   </div>${FT}</div>`;
 
+  // ── PAGE 2 : ADHÉSION + LOGEMENT SOUSCRIT ─────────────────────────
   const p2 = `<div class="pg">${HD}<div class="ct">
-    <div class="title" style="margin-top:4mm">FICHE DE DEMANDE D’ADHÉSION</div>${BOX}
-    ${SEC(1,'OBJET DE LA DEMANDE')}
-    ${L('Nom et prénom(s)','w1')}
-    <p class="ph">Je soussigné(e) demande à adhérer à la Promotion Immobilière <b>« LA CITÉ SAINTE-ÉLISABETH »</b> sise à <b>San-Pédro</b>, pour l’acquisition d’un <b>appartement de type F2 / F3 / F4</b> (entourer le type choisi) à titre individuel, après avoir pris connaissance des conditions d’adhésion ci-dessous, que j’accepte.</p>
-    ${SEC(2,'CONDITIONS D’ADHÉSION')}
+    <div class="title" style="margin-top:4mm">FICHE DE DEMANDE D’ADHÉSION</div>
+    <div class="note" style="margin-top:0">Promotion Immobilière des Résidences BÂTIR — <b style="color:#EB6530">Cité Sainte-Élisabeth</b>, San-Pédro — Appartements F2, F3 et F4</div>
+    ${SEC(8,'OBJET DE LA DEMANDE')}
+    <p class="ph">Je soussigné(e), dont l’identité figure dans la fiche d’identification ci-dessus, demande à adhérer à la Promotion Immobilière <b>« LA CITÉ SAINTE-ÉLISABETH »</b> sise à <b>San-Pédro</b>, pour l’acquisition d’un appartement <b>à titre individuel</b> (ou conjoint, le cas échéant), après avoir pris connaissance des conditions d’adhésion ci-dessous, que j’accepte.</p>
+    ${SEC(9,'CONDITIONS D’ADHÉSION')}
     <div class="eng">En signant la présente demande, je m’engage à :</div>
     <ol class="cd">
       <li><span>Avoir souscrit aux frais d’ouverture de dossier de <b>1 % du coût du logement, non remboursables</b> ;</span></li>
@@ -4614,35 +4646,39 @@ function genererFicheIdentification(){
       <li><span>Respecter les présentes conditions d’adhésion, dont j’ai pris connaissance ;</span></li>
       <li><span>Informer immédiatement BÂTIR S.A. de toute modification de mon statut ou de mes activités susceptible de remettre en cause les engagements ci-dessus.</span></li>
     </ol>
-    <div class="title" style="margin-top:7mm">FICHE DE SOUSCRIPTION</div>
+    <div class="title" style="margin-top:5mm">FICHE DE SOUSCRIPTION</div>
     <div class="hb">
       <div class="row"><span class="l">Cité</span><span class="v" style="color:#222">Sainte-Élisabeth</span><span class="l">Frais de dossier</span><span class="v"></span></div>
       <div class="row"><span class="l">Établissement prêteur</span><span class="v"></span><span class="l">Contact gestionnaire</span><span class="v"></span></div>
     </div>
-    ${SEC(1,'LOGEMENT')}
-    ${L('Type de logement','w1')}
-    <div class="row"><span class="l w1">Mode de paiement</span><span class="l"><span class="ck"></span>Cash</span><span class="v"></span><span class="l"><span class="ck"></span>Crédit bancaire</span><span class="v"></span><span class="l">%</span></div>
-    <div class="row"><span class="l">Îlot N°</span><span class="v"></span><span class="l">Bât. / Appt N°</span><span class="v"></span><span class="l">Surface totale</span><span class="v"></span><span class="l">m²</span></div>
-    ${SEC(2,'DÉTAIL DU COÛT')}
-    <div class="row"><span class="l w1">Tarif appliqué</span><span class="l"><span class="ck"></span>Normal</span><span class="l" style="margin-left:6mm"><span class="ck"></span>Offre exceptionnelle</span><span class="v" style="border:0"></span></div>
-    <div class="row"><span class="l w1">Coût du logement</span><span class="v"></span><span class="l">F CFA</span></div>
+    ${SEC(10,'LOGEMENT SOUSCRIT')}
+    <div class="row"><span class="l w1">Type de logement</span>${CK('F2','margin-right:3mm')}${CK('F3','margin-right:3mm')}${CK('F4','margin-right:3mm')}${CK('Penthouse 4p','margin-right:3mm')}${CK('Penthouse 5p')}</div>
+    ${R('Îlot N°','Bât. N°','Étage','Appt N°')}
+    ${R('Surface totale (m²)','Prix total du dossier (F CFA)')}
+    <div class="row"><span class="l w1">Mode de paiement</span>${CK('Cash')}<span class="v"></span>${CK('Crédit bancaire')}<span class="v"></span><span class="l">%</span></div>
+    <div class="eng" style="margin:2mm 0 0">Appartements supplémentaires — uniquement si plusieurs appartements ou un immeuble entier :</div>
+    ${tb5}
   </div>${FT}</div>`;
 
+  // ── PAGE 3 : COÛT, RÈGLEMENT, ÉCHÉANCIER, LIVRAISON, SIGNATURES ───
   const p3 = `<div class="pg">${HD}<div class="ct">
-    ${SEC(3,'CONDITIONS DE RÈGLEMENT')}
+    ${SEC(11,'COÛT ET CONDITIONS DE RÈGLEMENT')}
+    <div class="row"><span class="l w1">Tarif appliqué</span>${CK('Normal')}${CK('Offre exceptionnelle','margin-left:6mm')}<span class="v" style="border:0"></span></div>
+    <div class="row"><span class="l w1">Coût du logement</span><span class="v"></span><span class="l">F CFA</span></div>
     <div class="row"><span class="l" style="width:62mm;white-space:normal;line-height:1.25">Apport initial : 20 % du coût du logement (offre exceptionnelle : F2${NV}10${NV}000${NV}000 – F3${NV}15${NV}000${NV}000 – F4${NV}20${NV}000${NV}000${NV}F${NV}CFA)</span><span class="v"></span><span class="l">F CFA</span></div>
     <div class="tot"><span>RESTE À PAYER</span><span class="v"></span><span>F CFA</span></div>
-    ${SEC(4,'ÉCHÉANCIER DE PAIEMENT')}
+    ${SEC(12,'ÉCHÉANCIER DE PAIEMENT')}
     <div class="note" style="text-align:left;margin-bottom:2mm">Veuillez préciser la date et le montant de chaque versement. Le nombre d’échéances correspond à la vague de livraison choisie (24, 36 ou 48 mois) ; au-delà de 24 versements, joindre l’échéancier détaillé en annexe, signé par les deux parties.</div>
     <div class="cols"><div>${tab(1,6)}</div><div>${tab(7,12)}</div></div>
-    ${SEC(5,'VAGUE DE LIVRAISON')}
-    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>1ère livraison — 24 mois</span><span class="v"></span></div>
-    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>2ème livraison — 36 mois</span><span class="v"></span></div>
-    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>3ème livraison — 48 mois</span><span class="v"></span></div>
+    ${SEC(13,'VAGUE DE LIVRAISON')}
+    <div class="row" style="gap:8mm">${CK('1ère livraison — 24 mois')}${CK('2ème livraison — 36 mois')}${CK('3ème livraison — 48 mois')}</div>
+    ${SEC(14,'OBSERVATIONS')}
+    <div class="obs"></div>
     <div class="nb"><b class="o">NB :</b> l’acquéreur s’engage au strict respect de son échéancier de paiement. À défaut, BÂTIR S.A. se réserve le droit d’appliquer une <b>pénalité de retard de 5 % TTC</b> sur le montant de chaque échéance en retard. En signant ci-dessous, le souscripteur déclare avoir pris connaissance des conditions d’adhésion figurant dans la présente fiche et les accepter.</div>
     <div class="fait">Fait à San-Pédro, le <i>……………………………………</i></div>
     <div class="sg">
-      <div><div class="sigt">LE SOUSCRIPTEUR</div><div class="sigs">Signature précédée de la mention « Lu et approuvé »</div><div class="sigb"></div></div>
+      <div><div class="sigt">LE SOUSCRIPTEUR</div><div class="sigs">« Lu et approuvé » — et co-souscripteur le cas échéant</div><div class="sigb"></div></div>
+      <div><div class="sigt">LE COMMERCIAL</div><div class="sigs">Nom et signature</div><div class="sigb"></div></div>
       <div><div class="sigt">LA DIRECTION COMMERCIALE</div><div class="sigs">Signature et cachet</div><div class="sigb"></div></div>
     </div>
   </div>${FT}</div>`;
