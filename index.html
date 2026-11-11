@@ -647,7 +647,11 @@ textarea{resize:vertical;min-height:70px}
   <div class="card">
     <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
       <div class="card-title">📢 Leads publicitaires</div>
-      <button class="btn btn-outline btn-sm" onclick="chargerLeads()" title="Recharger">🔄 Actualiser</button>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="leadsCopierNumeros()" title="Numéros des leads qui n'ont pas encore souscrit">📋 Numéros pour SMS</button>
+        <button class="btn btn-outline btn-sm" onclick="leadsExporterSms()" title="Fichier CSV des leads qui n'ont pas encore souscrit, à importer dans SMS Affaires">⬇️ Exporter (SMS)</button>
+        <button class="btn btn-outline btn-sm" onclick="chargerLeads()" title="Recharger">🔄 Actualiser</button>
+      </span>
     </div>
     <div class="card-body">
       <p class="form-hint" style="margin-bottom:12px">Demandes reçues via le formulaire public lié à l'annonce sponsorisée. L'attribution à un commercial est faite par le Chef d'agence / Directeur Commercial — une fois attribué, le commercial concerné fait évoluer le statut au fil de son suivi.</p>
@@ -753,6 +757,14 @@ textarea{resize:vertical;min-height:70px}
       <div class="form-group"><label>Modèle du message <span style="font-weight:400;color:var(--gray)">(utilisez {nom} pour le nom du client ; enregistré sur cet appareil)</span></label>
         <textarea id="vxModeleAnniv" rows="2" oninput="vxSauverModele()" style="font-size:13px"></textarea></div>
       <div id="vxAnniv"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header"><div class="card-title">📣 Messages promotionnels et événements</div></div>
+    <div class="card-body">
+      <p class="form-hint" style="margin:0 0 10px">Modifiez ce qui est entre crochets, puis copiez dans SMS Affaires. Pour les <b>leads</b>, utilisez « Exporter (SMS) » dans l'onglet Leads pub ; pour les <b>clients</b>, « Exporter les contacts » plus bas.</p>
+      <div id="vxPromos"></div>
     </div>
   </div>
 
@@ -1668,10 +1680,55 @@ function renderVoeuxFetes(){
   }).join('');
 }
 
+
+// ── Messages promotionnels (leads non convertis / clients BÂTIR) ──
+const VX_PROMOS = [
+  { id:'pl', titre:'🎯 Leads — offre exceptionnelle (pas encore souscrit)', msg:"BATIR S.A. : offre exceptionnelle Cite Sainte-Elisabeth. F2 23 M, F3 38 M, F4 57 M FCFA jusqu'au 31/12/26. Info 27 22 43 67 24. Stop SMS : appelez ce numero" },
+  { id:'cp', titre:'💸 Clients — promotion / réduction', msg:"Cher client BATIR S.A., profitez de notre offre speciale : [AVANTAGE] jusqu'au [DATE]. Renseignements : +225 27 22 43 67 24" },
+  { id:'cv', titre:'🏗️ Clients — visite de chantier', msg:"Cher client BATIR S.A., visite de chantier a la Cite Sainte-Elisabeth le [DATE] a [HEURE]. Rendez-vous a [LIEU]. Confirmez : +225 27 22 43 67 24" },
+  { id:'ce', titre:'🎟️ Clients — événement', msg:"Cher client BATIR S.A., vous etes invite a [EVENEMENT] le [DATE] a [HEURE], [LIEU]. Confirmez votre presence : +225 27 22 43 67 24" }
+];
+function renderVoeuxPromos(){
+  const el = document.getElementById('vxPromos'); if(!el || el.dataset.init) return;
+  el.dataset.init = '1';
+  el.innerHTML = VX_PROMOS.map((p,i)=>`<div style="border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:10px">
+    <b style="font-size:13px">${p.titre}</b>
+    <textarea id="vxP${i}" rows="3" style="width:100%;font-size:13px;margin-top:6px" oninput="document.getElementById('vxPi${i}').innerHTML=vxInfoHtml(this.value)">${vxEsc(p.msg)}</textarea>
+    <div id="vxPi${i}" style="font-size:12px;color:var(--gray);margin:3px 0 6px">${vxInfoHtml(p.msg)}</div>
+    <button class="btn btn-sm btn-navy" onclick="vxCopierId('vxP${i}')">📋 Copier le message</button></div>`).join('');
+}
+
+// ── Leads qui n'ont pas encore souscrit : export pour SMS Affaires ──
+function leadsNonSouscrits(){
+  const clientsTel = new Set((DATA.clients||[]).map(c=>vxTel(c.tel)).filter(Boolean));
+  const vus = new Set(), out = [];
+  (LEADS||[]).forEach(l=>{
+    if(l.statut==='Converti') return;
+    const t = vxTel(l.whatsapp) || vxTel(l.contact);
+    if(!t || vus.has(t) || clientsTel.has(t)) return;
+    vus.add(t); out.push({ nom:String(l.nom||'').trim(), tel:t });
+  });
+  return out;
+}
+function leadsCopierNumeros(){
+  const l = leadsNonSouscrits(); if(!l.length){ toast('Aucun lead avec un numéro mobile valide.','danger'); return; }
+  vxCopier(l.map(x=>x.tel).join('\n'));
+}
+function leadsExporterSms(){
+  const l = leadsNonSouscrits(); if(!l.length){ toast('Aucun lead avec un numéro mobile valide.','danger'); return; }
+  const csv = '﻿Nom;Telephone\n' + l.map(x=>`"${x.nom.replace(/"/g,'""')}";${x.tel}`).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = 'leads_non_souscrits_batir.csv'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(`⬇️ ${l.length} lead(s) exporté(s) (hors clients et leads convertis).`,'success');
+}
+
 function renderVoeux(){
   const m = document.getElementById('vxModeleAnniv');
   if(m && !m.dataset.init){ m.value = vxLire('cse_voeux_modele', VX_MODELE_ANNIV); m.dataset.init = '1'; }
   renderVoeuxAnniv();
+  renderVoeuxPromos();
   renderVoeuxFetes();
 }
 
