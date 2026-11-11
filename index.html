@@ -223,6 +223,7 @@ textarea{resize:vertical;min-height:70px}
   <button class="nav-tab" onclick="goTab('proforma',this)">🧾 Proforma</button>
   <button class="nav-tab" onclick="goTab('simulateur',this)">🧮 Simulateur</button>
   <button class="nav-tab" onclick="goTab('invest',this)">📈 Investissement</button>
+  <button class="nav-tab" id="navVoeux" onclick="goTab('voeux',this)">🎉 Vœux <span id="voeuxBadge" class="badge" style="background:var(--danger);color:white;display:none;margin-left:4px"></span></button>
   <button class="nav-tab" id="navStock" onclick="goTab('stock',this)" style="display:none">🏢 Stock</button>
   <button class="nav-tab" id="navAdmin" onclick="goTab('admin',this)" style="display:none">🔐 Administration</button>
 </div>
@@ -236,6 +237,7 @@ textarea{resize:vertical;min-height:70px}
 
 <!-- ══ DASHBOARD ══ -->
 <div class="page active" id="page-dashboard">
+  <div id="voeuxAlerte"></div>
   <div class="stats-row" id="statsRow"></div>
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;flex-wrap:wrap">
     <div class="card">
@@ -722,6 +724,51 @@ textarea{resize:vertical;min-height:70px}
     </div>
     <div class="card-body" style="padding:0">
       <iframe id="simFrame" title="Simulateur" style="width:100%;height:calc(100vh - 190px);min-height:560px;border:0;display:block;border-radius:0 0 12px 12px"></iframe>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VŒUX : ANNIVERSAIRES ET FÊTES ══ -->
+<div class="page" id="page-voeux">
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="card-title">🎉 Vœux et fêtes — messages prêts à envoyer</div>
+      <a class="btn btn-orange btn-sm" href="https://smsaffaires.orange.ci/" target="_blank" rel="noopener">📲 Ouvrir SMS Affaires (Orange)</a>
+    </div>
+    <div class="card-body">
+      <p class="form-hint" style="margin:0">Copiez le message, puis collez-le dans SMS Affaires : <b>Envoi SMS → SMS direct</b> (un client) ou <b>SMS à un groupe</b> (tous les clients). Pour un envoi groupé, copiez les numéros ou exportez le fichier de contacts. Les messages sont sans accents spéciaux pour tenir dans 160 caractères par SMS.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="card-title">🎂 Anniversaires de vos clients</div>
+      <select id="vxPeriode" class="filter-select" onchange="renderVoeux()">
+        <option value="7">7 prochains jours</option>
+        <option value="30">30 prochains jours</option>
+        <option value="366">Toute l'année</option>
+      </select>
+    </div>
+    <div class="card-body">
+      <div class="form-group"><label>Modèle du message <span style="font-weight:400;color:var(--gray)">(utilisez {nom} pour le nom du client ; enregistré sur cet appareil)</span></label>
+        <textarea id="vxModeleAnniv" rows="2" oninput="vxSauverModele()" style="font-size:13px"></textarea></div>
+      <div id="vxAnniv"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+      <div class="card-title">🕊️ Fêtes chrétiennes et musulmanes à venir</div>
+      <span style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-outline btn-sm" onclick="vxCopierNumeros()">📋 Copier tous les numéros</button>
+        <button class="btn btn-outline btn-sm" onclick="vxExportContacts()">⬇️ Exporter les contacts (CSV)</button>
+        <button class="btn btn-navy btn-sm" onclick="vxAjouterFete()">➕ Ajouter une fête</button>
+      </span>
+    </div>
+    <div class="card-body">
+      <p class="form-hint" style="margin:0 0 10px" id="vxNbContacts"></p>
+      <p class="form-hint" style="margin:0 0 12px;background:#fff8e1;border-radius:6px;padding:8px 10px">Vos fiches clients ne précisent pas la religion : choisissez dans SMS Affaires les contacts à qui envoyer chaque message. Les fêtes musulmanes dépendent de l'observation de la lune : la date peut varier d'un jour (« date à confirmer »).</p>
+      <div id="vxFetes"></div>
     </div>
   </div>
 </div>
@@ -1279,6 +1326,7 @@ async function startApp(){
   renderSessionBadge();
   await chargerClients();
   renderDashboard();
+  majBadgeVoeux();
   chargerLeads();
   // Rafraîchissement automatique en arrière-plan (toutes les 45s), pour que les
   // changements faits par le recouvrement (statut de paiement) ou par d'autres
@@ -1432,12 +1480,229 @@ function addMoisDateISO(dateStr, n){
 // ─────────────────────────────────────────────────────────────────
 // NAVIGATION
 // ─────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────
+// VŒUX — anniversaires clients + fêtes chrétiennes / musulmanes.
+// Messages à copier puis à envoyer depuis la plateforme Orange SMS Affaires.
+// ─────────────────────────────────────────────────────────────────
+const VX_TEL = '+225 27 22 43 67 24';
+const VX_MODELE_ANNIV = "Joyeux anniversaire {nom} ! Toute l'equipe BATIR S.A. vous souhaite une annee de bonheur, de sante et de reussite.";
+const VX_FETES = [
+  { id:'noel',      nom:'Noël',                       date:'2026-12-25', rel:'chr', msg:"Joyeux Noel ! BATIR S.A. vous souhaite, ainsi qu'a votre famille, une fete remplie de paix, de joie et de benedictions." },
+  { id:'nouvelan',  nom:'Nouvel An',                  date:'2027-01-01', rel:'all', msg:"BATIR S.A. vous presente ses meilleurs voeux pour 2027 : sante, prosperite et reussite dans tous vos projets. Bonne et heureuse annee !" },
+  { id:'korite',    nom:'Aïd el-Fitr (Korité)',       date:'2027-03-09', rel:'mus', approx:true, msg:"Aid Moubarak ! BATIR S.A. vous souhaite, ainsi qu'a votre famille, une excellente fete de Korite dans la paix et la joie partagee." },
+  { id:'paques',    nom:'Pâques',                     date:'2027-03-28', rel:'chr', msg:"Joyeuses Paques ! BATIR S.A. vous souhaite une belle fete en famille, dans la paix et la joie." },
+  { id:'ascension', nom:'Ascension',                  date:'2027-05-06', rel:'chr', msg:"BATIR S.A. vous souhaite une heureuse fete de l'Ascension, dans la paix et la serenite." },
+  { id:'tabaski',   nom:'Aïd el-Adha (Tabaski)',      date:'2027-05-16', rel:'mus', approx:true, msg:"Bonne fete de Tabaski ! BATIR S.A. vous souhaite, ainsi qu'a votre famille, paix, partage et benedictions." },
+  { id:'pentecote', nom:'Pentecôte',                  date:'2027-05-16', rel:'chr', msg:"BATIR S.A. vous souhaite une heureuse fete de Pentecote, dans la paix et la joie." },
+  { id:'maouloud',  nom:'Maouloud (Mawlid)',          date:'2027-08-14', rel:'mus', approx:true, msg:"BATIR S.A. vous souhaite une heureuse fete du Maouloud, dans la paix et la serenite, en famille." },
+  { id:'assomption',nom:'Assomption',                 date:'2027-08-15', rel:'chr', msg:"BATIR S.A. vous souhaite une heureuse fete de l'Assomption, dans la paix et la serenite." }
+];
+const VX_REL = {
+  chr:{ lib:'✝️ Chrétienne', bg:'#e8f0fe', c:'#1a4f9c' },
+  mus:{ lib:'☪️ Musulmane',  bg:'#e6f6ec', c:'#1b6b3a' },
+  all:{ lib:'🎊 Pour tous',  bg:'#fff3d6', c:'#8a5a00' },
+  autre:{ lib:'⭐ Personnalisée', bg:'#f0eef9', c:'#4b3a8c' }
+};
+const GSM_BASE = "@£$¥èéùìòÇ\nØø\rÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ !\"#¤%&'()*+,-./0123456789:;<=>?¡ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÑÜ§¿abcdefghijklmnopqrstuvwxyzäöñüà";
+const GSM_EXT = "^{}\\[~]|€";
+
+function vxEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function vxStats(texte){
+  let n = 0, unicode = false;
+  for(const ch of String(texte||'')){
+    if(GSM_BASE.includes(ch)) n++;
+    else if(GSM_EXT.includes(ch)) n += 2;
+    else { unicode = true; n++; }
+  }
+  const un = unicode ? 70 : 160, multi = unicode ? 67 : 153;
+  return { n, unicode, seg: n<=un ? 1 : Math.ceil(n/multi) };
+}
+function vxInfoHtml(texte){
+  const i = vxStats(texte);
+  return `📏 ${i.n} caractères · <b>${i.seg} SMS</b>${i.unicode?' <span style="color:#a32d2d">⚠️ caractères spéciaux : 70 caractères max par SMS</span>':''}`;
+}
+function vxLire(cle, defaut){ try{ const v = localStorage.getItem(cle); return v==null ? defaut : JSON.parse(v); }catch(e){ return defaut; } }
+function vxEcrire(cle, val){ try{ localStorage.setItem(cle, JSON.stringify(val)); }catch(e){} }
+function vxFait(cle){ return !!vxLire('cse_voeux_faits', {})[cle]; }
+function vxBasculerFait(cle){
+  const f = vxLire('cse_voeux_faits', {}); if(f[cle]) delete f[cle]; else f[cle] = 1;
+  vxEcrire('cse_voeux_faits', f); renderVoeux(); majBadgeVoeux();
+}
+function vxTel(t){
+  let d = String(t||'').replace(/[\s.\-()]/g,'').replace(/^\+?225/,'').replace(/^00225/,'');
+  return /^0\d{9}$/.test(d) ? d : null;
+}
+function vxJours(iso){
+  const a = new Date(); a.setHours(0,0,0,0);
+  return Math.round((new Date(iso+'T00:00:00') - a) / 864e5);
+}
+function vxLabelJours(j){ return j===0 ? "Aujourd'hui" : j===1 ? 'Demain' : j===-1 ? 'Hier' : j>0 ? `dans ${j} jours` : `il y a ${-j} jours`; }
+function vxFetes(){
+  const perso = vxLire('cse_voeux_perso', []).map(f=>Object.assign({ rel:'autre' }, f));
+  return VX_FETES.concat(perso).sort((a,b)=>a.date.localeCompare(b.date));
+}
+// Date de naissance enregistrée en JJ/MM/AAAA (ou AAAA-MM-JJ)
+function vxNaissance(c){
+  const d = String(c.dateNaiss||'').trim(); let m;
+  if((m = d.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/))) return { j:+m[1], m:+m[2], a:+m[3] };
+  if((m = d.match(/^(\d{4})-(\d{2})-(\d{2})/))) return { j:+m[3], m:+m[2], a:+m[1] };
+  return null;
+}
+function vxAnniversaires(horizon){
+  const out = [], now = new Date(); now.setHours(0,0,0,0);
+  (DATA.clients||[]).forEach(c=>{
+    if(c.typeSouscripteur==='entreprise') return;
+    const n = vxNaissance(c); if(!n) return;
+    let prochain = new Date(now.getFullYear(), n.m-1, n.j);
+    if(prochain < now) prochain = new Date(now.getFullYear()+1, n.m-1, n.j);
+    const jours = Math.round((prochain - now)/864e5);
+    if(jours > horizon) return;
+    out.push({ c, jours, age: prochain.getFullYear() - n.a, annee: prochain.getFullYear(), jm: String(n.j).padStart(2,'0')+'/'+String(n.m).padStart(2,'0') });
+  });
+  return out.sort((a,b)=>a.jours-b.jours);
+}
+function vxMessageAnniv(c){
+  const modele = vxLire('cse_voeux_modele', VX_MODELE_ANNIV);
+  const nom = String(c.nom||'').trim();
+  return modele.replace(/\{nom\}/g, nom);
+}
+function vxSauverModele(){ vxEcrire('cse_voeux_modele', document.getElementById('vxModeleAnniv').value); renderVoeuxAnniv(); }
+
+function vxCopier(texte){
+  const fin = ()=>toast('📋 Copié — collez-le dans SMS Affaires.','success');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(texte).then(fin).catch(()=>vxCopierSecours(texte, fin));
+  } else vxCopierSecours(texte, fin);
+}
+function vxCopierSecours(texte, fin){
+  const t = document.createElement('textarea'); t.value = texte; t.style.position='fixed'; t.style.opacity='0';
+  document.body.appendChild(t); t.select();
+  try{ document.execCommand('copy'); fin(); }catch(e){ toast('Copie impossible : sélectionnez le texte à la main.','danger'); }
+  document.body.removeChild(t);
+}
+function vxCopierId(id){ const el = document.getElementById(id); if(el) vxCopier(el.value); }
+function vxWhatsApp(dossier){
+  const c = DATA.clients.find(x=>x.id===dossier); if(!c) return;
+  const t = vxTel(c.tel); if(!t){ toast('Numéro invalide.','danger'); return; }
+  window.open('https://wa.me/225'+t+'?text='+encodeURIComponent(vxMessageAnniv(c)), '_blank', 'noopener');
+}
+
+function vxContacts(){
+  const vus = new Set(), out = [];
+  (DATA.clients||[]).forEach(c=>{
+    const t = vxTel(c.tel); if(!t || vus.has(t)) return;
+    vus.add(t); out.push({ nom:String(c.nom||'').trim(), tel:t });
+  });
+  return out;
+}
+function vxCopierNumeros(){
+  const l = vxContacts(); if(!l.length){ toast('Aucun numéro valide.','danger'); return; }
+  vxCopier(l.map(x=>x.tel).join('\n'));
+}
+function vxExportContacts(){
+  const l = vxContacts(); if(!l.length){ toast('Aucun numéro valide.','danger'); return; }
+  const csv = '﻿Nom;Telephone\n' + l.map(x=>`"${x.nom.replace(/"/g,'""')}";${x.tel}`).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  a.download = 'contacts_clients_batir.csv'; document.body.appendChild(a); a.click();
+  setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  toast(`⬇️ ${l.length} contacts exportés.`,'success');
+}
+function vxAjouterFete(){
+  const nom = prompt('Nom de la fête (ex : Fête des mères) :'); if(!nom) return;
+  const date = prompt('Date au format AAAA-MM-JJ (ex : 2027-05-30) :'); if(!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)){ toast('Date invalide (AAAA-MM-JJ).','danger'); return; }
+  const msg = prompt('Message à envoyer (sans accents si possible) :', 'BATIR S.A. vous souhaite une excellente fete.'); if(!msg) return;
+  const l = vxLire('cse_voeux_perso', []); l.push({ id:'p'+Date.now(), nom, date, msg });
+  vxEcrire('cse_voeux_perso', l); renderVoeux(); majBadgeVoeux();
+}
+function vxSupprimerFete(id){
+  if(!confirm('Supprimer cette fête personnalisée ?')) return;
+  vxEcrire('cse_voeux_perso', vxLire('cse_voeux_perso', []).filter(f=>f.id!==id)); renderVoeux(); majBadgeVoeux();
+}
+
+function renderVoeuxAnniv(){
+  const el = document.getElementById('vxAnniv'); if(!el) return;
+  const liste = vxAnniversaires(parseInt(document.getElementById('vxPeriode').value)||7);
+  if(!liste.length){ el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--gray)">Aucun anniversaire sur cette période (ou dates de naissance non renseignées).</div>'; return; }
+  el.innerHTML = `<div class="table-wrap"><table>
+    <thead><tr><th>Quand</th><th>Client</th><th>Âge</th><th>Message</th><th style="white-space:nowrap">Actions</th></tr></thead>
+    <tbody>${liste.map((x,i)=>{
+      const c = x.c, cle = `anniv_${c.dossier}_${x.annee}`, fait = vxFait(cle), t = vxTel(c.tel), msg = vxMessageAnniv(c);
+      return `<tr style="${fait?'opacity:.55':''}">
+        <td style="white-space:nowrap"><b>${vxLabelJours(x.jours)}</b><div style="font-size:11px;color:var(--gray)">${x.jm}</div></td>
+        <td><b>${vxEsc(c.nom)}</b><div style="font-size:11px;color:var(--gray)">${t?vxEsc(c.tel):'<span style="color:#a32d2d">⚠️ numéro manquant ou invalide</span>'}</div></td>
+        <td>${x.age} ans</td>
+        <td style="font-size:12px;max-width:340px"><textarea id="vxA${i}" rows="4" style="width:100%;font-size:12px">${vxEsc(msg)}</textarea></td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-sm btn-navy" onclick="vxCopierId('vxA${i}')">📋 Copier</button>
+          ${t?`<button class="btn btn-sm btn-outline" onclick="vxWhatsApp('${vxEsc(c.id)}')" title="Envoyer par WhatsApp">💬</button>`:''}
+          <button class="btn btn-sm ${fait?'btn-navy':'btn-outline'}" onclick="vxBasculerFait('${vxEsc(cle)}')">${fait?'✅ Fait':'Marquer fait'}</button>
+        </td></tr>`;
+    }).join('')}</tbody></table></div>`;
+}
+
+function renderVoeuxFetes(){
+  const el = document.getElementById('vxFetes'); if(!el) return;
+  const nb = vxContacts().length;
+  document.getElementById('vxNbContacts').innerHTML = `👥 <b>${nb}</b> client(s) avec un numéro mobile valide (10 chiffres, commençant par 0).`;
+  const an = new Date().getFullYear();
+  const liste = vxFetes().filter(f=>vxJours(f.date) >= -2);
+  if(!liste.length){ el.innerHTML = '<div style="text-align:center;padding:18px;color:var(--gray)">Plus de fête dans la liste. Utilisez « ➕ Ajouter une fête » pour en ajouter.</div>'; return; }
+  el.innerHTML = liste.map((f,i)=>{
+    const j = vxJours(f.date), r = VX_REL[f.rel]||VX_REL.autre, cle = `fete_${f.id}_${f.date.slice(0,4)}`, fait = vxFait(cle);
+    const d = new Date(f.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    return `<div style="border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:12px;${fait?'opacity:.6':''}${j>=0&&j<=3?';border-color:var(--orange,#e8820c);box-shadow:0 0 0 2px rgba(232,130,12,.15)':''}">
+      <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+        <div><b style="font-size:15px">${vxEsc(f.nom)}</b>
+          <span class="badge" style="background:${r.bg};color:${r.c};margin-left:6px">${r.lib}</span>
+          ${f.approx?'<span class="badge badge-gray" style="margin-left:4px" title="Selon l\'observation de la lune">date à confirmer</span>':''}
+          <div style="font-size:12px;color:var(--gray);margin-top:2px">${d} · <b style="color:${j>=0&&j<=3?'#c2410c':'inherit'}">${vxLabelJours(j)}</b></div></div>
+      </div>
+      <textarea id="vxF${i}" rows="3" style="width:100%;font-size:13px" oninput="document.getElementById('vxFi${i}').innerHTML=vxInfoHtml(this.value)">${vxEsc(f.msg)}</textarea>
+      <div id="vxFi${i}" style="font-size:12px;color:var(--gray);margin:3px 0 8px">${vxInfoHtml(f.msg)}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-sm btn-navy" onclick="vxCopierId('vxF${i}')">📋 Copier le message</button>
+        <button class="btn btn-sm ${fait?'btn-navy':'btn-outline'}" onclick="vxBasculerFait('${cle}')">${fait?'✅ Envoyé':'Marquer comme envoyé'}</button>
+        ${String(f.id).startsWith('p')?`<button class="btn btn-sm btn-danger" onclick="vxSupprimerFete('${f.id}')">🗑</button>`:''}
+      </div></div>`;
+  }).join('');
+}
+
+function renderVoeux(){
+  const m = document.getElementById('vxModeleAnniv');
+  if(m && !m.dataset.init){ m.value = vxLire('cse_voeux_modele', VX_MODELE_ANNIV); m.dataset.init = '1'; }
+  renderVoeuxAnniv();
+  renderVoeuxFetes();
+}
+
+// Alertes : anniversaires et fêtes dans les 3 prochains jours, non marqués « faits »
+function majBadgeVoeux(){
+  try{
+    const alertes = [];
+    const annivs = vxAnniversaires(3).filter(x=>!vxFait(`anniv_${x.c.dossier}_${x.annee}`));
+    const auj = annivs.filter(x=>x.jours===0).length;
+    if(annivs.length) alertes.push(`🎂 ${annivs.length} anniversaire${annivs.length>1?'s':''}${auj?` (dont ${auj} aujourd'hui)`:' à venir'}`);
+    vxFetes().forEach(f=>{
+      const j = vxJours(f.date);
+      if(j>=0 && j<=3 && !vxFait(`fete_${f.id}_${f.date.slice(0,4)}`)) alertes.push(`🕊️ ${f.nom} : ${vxLabelJours(j).toLowerCase()}`);
+    });
+    const b = document.getElementById('voeuxBadge');
+    if(b){ b.textContent = alertes.length; b.style.display = alertes.length ? 'inline' : 'none'; }
+    const box = document.getElementById('voeuxAlerte');
+    if(box) box.innerHTML = alertes.length
+      ? `<div style="background:#fff8e1;border:1px solid #f0d88a;border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+           <span><b>🎉 Vœux à envoyer :</b> ${alertes.map(vxEsc).join(' · ')}</span>
+           <button class="btn btn-sm btn-orange" onclick="goTab('voeux',document.getElementById('navVoeux'))">Voir les messages</button></div>`
+      : '';
+  }catch(e){}
+}
+
 function goTab(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(b=>b.classList.remove('active'));
   document.getElementById('page-'+id).classList.add('active');
   if(btn) btn.classList.add('active');
-  if(id==='dashboard') renderDashboard();
+  if(id==='dashboard'){ renderDashboard(); majBadgeVoeux(); }
   if(id==='liste') renderListe();
   if(id==='nouveau' && !_editId) resetForm();
   if(id==='admin') renderAdmin();
@@ -1447,6 +1712,7 @@ function goTab(id, btn){
   if(id==='proforma') initProforma();
   if(id==='simulateur') initSimulateur();
   if(id==='invest') initInvest();
+  if(id==='voeux') renderVoeux();
 }
 
 
