@@ -208,7 +208,7 @@ textarea{resize:vertical;min-height:70px}
     <div class="session-badge" id="sessionBadge"></div>
     <button class="btn btn-outline btn-sm" onclick="chargerClients().then(()=>{renderDashboard();renderListe();})" title="Recharger les données depuis le serveur">🔄</button>
     <button class="btn btn-outline btn-sm" onclick="genererDossierVierge()" title="Fiche des conditions générales de souscription, vierge, à remettre à un prospect">📄 Fiche vierge</button>
-    <button class="btn btn-outline btn-sm" onclick="genererFicheIdentification()" title="Fiche pratique à faire remplir par le client sur le terrain (identité + bien souscrit), pour ressaisie ultérieure">🖋️ Fiche terrain</button>
+    <button class="btn btn-outline btn-sm" onclick="genererFicheIdentification()" title="Dossier de souscription (3 pages) à faire remplir par le client : identification, adhésion, souscription et échéancier">🖋️ Dossier de souscription</button>
     <button class="btn btn-outline btn-sm" onclick="exporterExcel()">⬇ Excel</button>
   </div>
 </div>
@@ -4508,189 +4508,150 @@ function buildContratReservation(c){
 function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
 // ─────────────────────────────────────────────────────────────────
-// FICHE D'IDENTIFICATION TERRAIN (à faire remplir à la main par le client
-// lors d'une visite hors bureau — sert de base pour la ressaisie numérique
-// une fois de retour) — document simple, distinct du contrat complet.
+// DOSSIER DE SOUSCRIPTION — Cité Sainte-Élisabeth (3 pages A4 à faire
+// remplir à la main par le client : fiche d'identification, demande
+// d'adhésion et fiche de souscription avec échéancier). Remplace l'ancienne
+// « fiche terrain ». Sert de base pour l'enregistrement numérique du dossier.
 // ─────────────────────────────────────────────────────────────────
 function genererFicheIdentification(){
-  const dateEdit = new Date().toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
   const css = `
+    @page{size:A4 portrait;margin:0}
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:10.5pt;color:#111;background:white}
-    .page{width:210mm;min-height:297mm;margin:0 auto;display:flex;flex-direction:column}
-    .header{background:#00294d;color:white;padding:14px 24px;display:flex;justify-content:space-between;align-items:center}
-    .header-logo img{height:38px;display:block}
-    .header-sub{font-size:9px;color:rgba(255,255,255,.7);margin-top:2px;font-style:italic}
-    .header-right{text-align:right}
-    .header-right .tag{background:rgba(249,200,101,.25);border:1px solid rgba(249,200,101,.6);color:#f9c865;font-weight:800;padding:3px 10px;border-radius:4px;font-size:11px}
-    .band{background:#f36f00;color:white;padding:5px 24px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
-    .body{padding:16px 24px;flex:1}
-    .footer-bar{background:#f7f8fa;border-top:1.5px solid #f36f00;padding:7px 24px;font-size:7.5pt;color:#888;text-align:center}
-    h1{font-size:15pt;font-weight:900;text-align:center;margin:10px 0 4px;color:#00294d}
-    .sous{text-align:center;font-size:9.5pt;color:#666;margin-bottom:14px;font-style:italic}
-    .meta-row{display:flex;gap:24px;margin-bottom:14px;font-size:10pt}
-    .meta-row .field{flex:1}
-    .section-header{background:#00294d;color:white;padding:5px 14px;border-radius:4px;font-size:10pt;font-weight:700;margin:14px 0 10px}
-    .type-row{display:flex;gap:30px;margin-bottom:12px;font-size:11pt;font-weight:700}
-    .type-row .box{display:inline-block;width:14px;height:14px;border:1.5px solid #00294d;margin-right:6px;vertical-align:middle}
-    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px}
-    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px 20px}
-    .field{margin-bottom:10px}
-    .field-label{font-size:8pt;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:#555;margin-bottom:2px}
-    .field-line{border-bottom:1.3px solid #333;min-height:20px}
-    .field.full{grid-column:1/-1}
-    .obs-box{border:1.3px solid #333;min-height:70px;margin-top:4px}
-    .sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:40px;margin-top:26px}
-    .sig-box{text-align:center;font-size:9pt}
-    .sig-line{border-top:1px solid #999;margin-top:44px;padding-top:5px;font-weight:700;color:#444}
+    html,body{background:#fff}
+    body{font-family:Calibri,Carlito,Arial,sans-serif;font-size:9.5pt;color:#222}
+    .pg{width:210mm;height:296mm;position:relative;overflow:hidden;page-break-after:always;break-after:page;margin:0 auto}
+    .pg:last-child{page-break-after:auto;break-after:auto}
+    .hd{margin:0 12mm;padding-top:7mm;display:flex;justify-content:space-between;align-items:flex-start;border-bottom:1.5px solid #343B58;padding-bottom:3mm}
+    .hd img{height:17mm;display:block}
+    .hd .r{text-align:right;font-size:7pt;color:#6B7080;line-height:1.35}
+    .hd .r b{display:block;color:#EB6530;font-size:9pt;font-style:italic;margin-bottom:.5mm}
+    .ct{padding:0 12mm}
+    .ft{position:absolute;left:12mm;right:12mm;bottom:5mm;border-top:2px solid #EB6530;padding-top:1.5mm;text-align:center;font-size:6.5pt;color:#6B7080;line-height:1.4}
+    .ft b{color:#343B58}
+    .title{text-align:center;font-weight:700;letter-spacing:.22em;color:#343B58;font-size:14.5pt;margin:5mm 0 2.5mm}
+    .box{background:#F3F4F7;border-left:4px solid #EB6530;text-align:center;padding:2mm 3mm}
+    .box .k{font-size:7pt;letter-spacing:.2em;color:#6B7080;font-weight:700}
+    .box .n{font-size:12pt;font-weight:700;color:#EB6530}.box .n span{color:#343B58}
+    .box .s{font-size:9.5pt;color:#3A3F52}
+    .note{text-align:center;font-size:8pt;font-style:italic;color:#6B7080;margin:1.5mm 0 0}
+    .sec{display:flex;align-items:stretch;background:#343B58;color:#fff;font-weight:700;letter-spacing:.2em;font-size:7.8pt;margin:3.2mm 0 .8mm}
+    .sec b{background:#EB6530;min-width:9mm;text-align:center;padding:1.4mm 0;margin-right:3mm;letter-spacing:0}
+    .sec span{padding:1.4mm 0}
+    .row{display:flex;align-items:flex-end;gap:3mm;min-height:6.6mm;padding-top:1mm}
+    .row .l{color:#3A3F52;font-size:9pt;white-space:nowrap}
+    .row .v{flex:1;border-bottom:1px dotted #7F869C;min-height:5mm}
+    .row .l.w1{width:50mm}
+    .row .l.w2{width:50mm}
+    .sg{display:flex;gap:6mm;margin-top:3mm}
+    .sg>div{flex:1}
+    .sigb{border:1px solid #9aa1b5;height:25mm;margin-top:1.5mm}
+    .sigt{font-weight:700;letter-spacing:.2em;color:#343B58;font-size:8pt;text-align:center}
+    .sigs{font-style:italic;font-size:7pt;color:#6B7080;text-align:center}
+    .fait{text-align:right;font-size:9pt;margin-top:3mm}
+    .fait i{color:#7F869C;font-style:normal}
+    .ph{font-size:9.3pt;line-height:1.35;margin:2mm 0;text-align:justify}
+    .ph b{color:#343B58}
+    .eng{font-style:italic;color:#6B7080;font-size:8.8pt;margin:1.5mm 0}
+    ol.cd{list-style:none;counter-reset:c}
+    ol.cd li{counter-increment:c;display:flex;gap:3mm;margin:1.2mm 0;font-size:9.1pt;line-height:1.3;text-align:justify}
+    ol.cd li:before{content:counter(c) ".";color:#EB6530;font-weight:700;min-width:5mm}
+    ol.cd li b{color:#343B58}
+    .ck{display:inline-block;width:3.2mm;height:3.2mm;border:1.2px solid #343B58;margin-right:1.5mm;vertical-align:-0.5mm}
+    .tot{display:flex;align-items:flex-end;gap:3mm;background:#F3F4F7;padding:1.5mm 2mm;margin-top:1mm;font-weight:700;color:#343B58}
+    .tot .v{flex:1;border-bottom:1px dotted #7F869C;min-height:5mm}
+    .hb{background:#F3F4F7;border-left:4px solid #EB6530;padding:1mm 3mm;margin-top:1mm}
+    .hb .row .l{font-weight:700;color:#343B58}
+    .cols{display:flex;gap:7mm}.cols>div{flex:1}
+    table.ech{width:100%;border-collapse:collapse;font-size:8.5pt}
+    table.ech th{background:#343B58;color:#fff;font-size:7pt;letter-spacing:.12em;padding:1.4mm;text-align:center}
+    table.ech td{border:1px solid #c9cedb;height:8.2mm;text-align:center;color:#7F869C}
+    table.ech td.n{color:#EB6530;font-weight:700;width:11mm}
+    table.ech tr:nth-child(even) td{background:#F3F4F7}
+    .nb{background:#F3F4F7;border-left:4px solid #EB6530;padding:2.2mm 3mm;font-size:9pt;line-height:1.35;margin-top:3.5mm;text-align:justify}
+    .nb b.o{color:#EB6530}.nb b{color:#343B58}
+    @media print{.pg{margin:0}}
   `;
+  const L = (l,w) => `<div class="row"><span class="l${w?' '+w:''}">${l}</span><span class="v"></span></div>`;
+  const L2 = (a,b) => `<div class="row"><span class="l">${a}</span><span class="v"></span><span class="l">${b}</span><span class="v"></span></div>`;
+  const SEC = (n,t) => `<div class="sec"><b>${n}</b><span>${t}</span></div>`;
+  const HD = `<div class="hd"><img src="${LOGO_BATIR}" alt="BÂTIR S.A"><div class="r"><b>Des Références qui donnent de l’Assurance</b>Bâtiments · Contrôles · Travaux publics · Études techniques<br>Promotions immobilières · Réaménagements · Ventes de terrains</div></div>`;
+  const FT = `<div class="ft"><b>BÂTIR S.A.</b> — Siège social : Cocody Riviera-Attoban, Espace KAYLA, 1<sup>er</sup> étage, appartement n°2 — 06 BP 1975 Abidjan 06<br>Agence de San-Pédro : immeuble Mohikakro, 3<sup>e</sup> étage — Tél. : +225 27 22 43 67 24 — www.batir-sa.com — flash@batir-sa.com<br>RCCM : CI-ABJ-2010-B-6874 — CC N° 1100496 W</div>`;
+  const BOX = `<div class="box"><div class="k">PROMOTION IMMOBILIÈRE DES RÉSIDENCES BÂTIR</div><div class="n">CITÉ SAINTE-ÉLISABETH <span>&nbsp;—&nbsp; SAN-PÉDRO</span></div><div class="s">Appartements F2, F3 et F4</div></div><div class="note">À remplir complètement et lisiblement</div>`;
+  const NV = ' ';
+  const ord = n => n===1 ? '1<sup>er</sup>' : n+'<sup>e</sup>';
+  const lig = n => `<tr><td class="n">${ord(n)}</td><td></td><td>……/……/…………</td></tr>`;
+  const tab = (a,b) => `<table class="ech"><tr><th>N°</th><th>MONTANT (F CFA)</th><th>DATE</th></tr>${Array.from({length:b-a+1},(_,i)=>lig(a+i)).join('')}</table>`;
 
-  const champ = (label) => `<div class="field"><div class="field-label">${label}</div><div class="field-line"></div></div>`;
-  const champFull = (label) => `<div class="field full"><div class="field-label">${label}</div><div class="field-line"></div></div>`;
+  const p1 = `<div class="pg">${HD}<div class="ct">
+    <div class="title">FICHE D’IDENTIFICATION</div>${BOX}
+    ${SEC(1,'ÉTAT CIVIL')}
+    ${L('Nom et prénom(s)','w1')}${L('Date et lieu de naissance','w1')}${L('Nationalité','w1')}${L('Pièce d’identité N°','w1')}
+    ${L2('Date de délivrance','Lieu de délivrance')}${L('Matricule','w1')}
+    ${SEC(2,'COORDONNÉES')}
+    ${L('Adresse domicile','w1')}${L('Ville et quartier de résidence','w1')}${L('Email','w1')}${L2('Téléphone','Cellulaire')}
+    ${SEC(3,'SITUATION PROFESSIONNELLE')}
+    ${L2('Profession','Département d’activité')}${L('Lieu d’exercice de l’activité','w1')}${L('Employeur','w1')}${L('Adresse employeur','w1')}${L('Téléphone employeur','w1')}${L('Début de l’activité professionnelle','w1')}${L('Date de mise à la retraite','w1')}
+    ${SEC(4,'SUIVI COMMERCIAL')}
+    ${L('Nom du commercial sollicité','w1')}
+    <div class="fait" style="margin-top:6mm">Fait à San-Pédro, le <i>……………………………………</i></div>
+    <div class="sigt" style="text-align:left;margin-left:98mm;margin-top:2mm;letter-spacing:0;font-size:9pt">Le souscripteur</div>
+    <div class="sigb" style="margin-left:98mm;height:28mm"></div>
+  </div>${FT}</div>`;
 
-  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Fiche d'identification — Cité Sainte-Élisabeth</title>
-  <style>${css}</style></head><body>
-  <div class="page">
-    <div class="header">
-      <div>
-        <div class="header-logo"><img src="${LOGO_BATIR}" alt="BÂTIR S.A"></div>
-        <div class="header-sub">Des Références qui donnent de l'Assurance</div>
-      </div>
-      <div class="header-right">
-        <div class="tag">FICHE TERRAIN</div>
-      </div>
+  const p2 = `<div class="pg">${HD}<div class="ct">
+    <div class="title" style="margin-top:4mm">FICHE DE DEMANDE D’ADHÉSION</div>${BOX}
+    ${SEC(1,'OBJET DE LA DEMANDE')}
+    ${L('Nom et prénom(s)','w1')}
+    <p class="ph">Je soussigné(e) demande à adhérer à la Promotion Immobilière <b>« LA CITÉ SAINTE-ÉLISABETH »</b> sise à <b>San-Pédro</b>, pour l’acquisition d’un <b>appartement de type F2 / F3 / F4</b> (entourer le type choisi) à titre individuel, après avoir pris connaissance des conditions d’adhésion ci-dessous, que j’accepte.</p>
+    ${SEC(2,'CONDITIONS D’ADHÉSION')}
+    <div class="eng">En signant la présente demande, je m’engage à :</div>
+    <ol class="cd">
+      <li><span>Avoir souscrit aux frais d’ouverture de dossier de <b>1 % du coût du logement, non remboursables</b> ;</span></li>
+      <li><span>Effectuer un versement de <b>20 % du coût du logement</b> à titre d’<b>apport initial</b>, au plus tard <b>30 jours</b> après le paiement des frais d’ouverture de dossier. Passé ce délai, BÂTIR S.A. se réserve le droit d’annuler ma souscription et de procéder à la réattribution du logement ;</span></li>
+      <li><span>Le cas échéant, au titre de l’offre exceptionnelle, verser l’apport initial minimum de <b>10${NV}000${NV}000${NV}F${NV}CFA (F2), 15${NV}000${NV}000${NV}F${NV}CFA (F3) ou 20${NV}000${NV}000${NV}F${NV}CFA (F4)</b> au plus tard le <b>31 décembre 2026</b>. À défaut, le prix normal du logement s’applique automatiquement ;</span></li>
+      <li><span>Accepter l’application d’une <b>pénalité de 5 % TTC</b> sur le montant de toute échéance en retard, en cas de non-respect de mon échéancier ;</span></li>
+      <li><span>En cas de désistement, accepter le remboursement des sommes versées, déduction faite de <b>5 % du coût du logement</b> à titre d’indemnité d’immobilisation ;</span></li>
+      <li><span>Respecter les présentes conditions d’adhésion, dont j’ai pris connaissance ;</span></li>
+      <li><span>Informer immédiatement BÂTIR S.A. de toute modification de mon statut ou de mes activités susceptible de remettre en cause les engagements ci-dessus.</span></li>
+    </ol>
+    <div class="title" style="margin-top:7mm">FICHE DE SOUSCRIPTION</div>
+    <div class="hb">
+      <div class="row"><span class="l">Cité</span><span class="v" style="color:#222">Sainte-Élisabeth</span><span class="l">Frais de dossier</span><span class="v"></span></div>
+      <div class="row"><span class="l">Établissement prêteur</span><span class="v"></span><span class="l">Contact gestionnaire</span><span class="v"></span></div>
     </div>
-    <div class="band">Bâtiments, Contrôles, Travaux publics, Etudes techniques, Promotions Immobilières, Réaménagements, Ventes de terrains</div>
+    ${SEC(1,'LOGEMENT')}
+    ${L('Type de logement','w1')}
+    <div class="row"><span class="l w1">Mode de paiement</span><span class="l"><span class="ck"></span>Cash</span><span class="v"></span><span class="l"><span class="ck"></span>Crédit bancaire</span><span class="v"></span><span class="l">%</span></div>
+    <div class="row"><span class="l">Îlot N°</span><span class="v"></span><span class="l">Bât. / Appt N°</span><span class="v"></span><span class="l">Surface totale</span><span class="v"></span><span class="l">m²</span></div>
+    ${SEC(2,'DÉTAIL DU COÛT')}
+    <div class="row"><span class="l w1">Tarif appliqué</span><span class="l"><span class="ck"></span>Normal</span><span class="l" style="margin-left:6mm"><span class="ck"></span>Offre exceptionnelle</span><span class="v" style="border:0"></span></div>
+    <div class="row"><span class="l w1">Coût du logement</span><span class="v"></span><span class="l">F CFA</span></div>
+  </div>${FT}</div>`;
 
-    <div class="body">
-      <h1>FICHE D'IDENTIFICATION DU SOUSCRIPTEUR</h1>
-      <div class="sous">Cité Sainte-Élisabeth — San-Pédro &nbsp;·&nbsp; À remplir par le client lors de la visite, sert de base pour l'enregistrement numérique du dossier</div>
-
-      <div class="meta-row">
-        <div class="field"><div class="field-label">Date de la visite</div><div class="field-line"></div></div>
-        <div class="field"><div class="field-label">Commercial</div><div class="field-line"></div></div>
-        <div class="field"><div class="field-label">Lieu du rendez-vous</div><div class="field-line"></div></div>
-      </div>
-
-      <div class="section-header">TYPE DE SOUSCRIPTEUR</div>
-      <div class="type-row">
-        <div><span class="box"></span> Particulier</div>
-        <div><span class="box"></span> Entreprise</div>
-      </div>
-
-      <div class="section-header">IDENTITÉ — PARTICULIER</div>
-      <div class="grid2">
-        ${champFull('Nom &amp; Prénoms')}
-        ${champ('Date de naissance')}
-        ${champ('Lieu de naissance')}
-        ${champ('Nationalité')}
-        ${champ('Situation matrimoniale')}
-        ${champ('Profession')}
-        ${champ('Employeur')}
-        ${champ('Adresse employeur')}
-        ${champ('N° CNI / Passeport')}
-        ${champ('Validité pièce')}
-      </div>
-
-      <div class="section-header">IDENTITÉ — ENTREPRISE (si applicable)</div>
-      <div class="grid2">
-        ${champFull('Raison sociale')}
-        ${champ('N° RCCM')}
-        ${champ("Secteur d'activité")}
-        ${champFull('Siège social')}
-        ${champ('Représentant légal — Nom')}
-        ${champ('Représentant légal — Fonction')}
-      </div>
-
-      <div class="section-header">CO-SOUSCRIPTEUR <span style="font-weight:400;text-transform:none;letter-spacing:0">(à remplir si souscription conjointe Mr &amp; Mme — sinon laisser vide)</span></div>
-      <div class="grid2">
-        ${champFull('Nom & Prénoms du co-souscripteur')}
-        ${champ('Date de naissance')}
-        ${champ('N° CNI / Passeport')}
-        ${champ('Profession')}
-        ${champ('Téléphone')}
-      </div>
-
-      <div class="section-header">REPRÉSENTANT LÉGAL <span style="font-weight:400;text-transform:none;letter-spacing:0">(à remplir si le souscripteur est mineur — sinon laisser vide)</span></div>
-      <div class="grid2">
-        ${champFull('Nom & Prénoms du représentant (parent / tuteur)')}
-        ${champ('Lien de parenté')}
-        ${champ('N° CNI / Passeport du représentant')}
-        ${champ('Téléphone du représentant')}
-      </div>
-
-      <div class="section-header">CONTACT</div>
-      <div class="grid3">
-        ${champ('Téléphone')}
-        ${champ('Email')}
-        ${champ('Commune &amp; quartier')}
-        ${champFull("Contact en cas d'absence (nom + téléphone)")}
-      </div>
-
-      <div class="section-header">BIEN SOUSCRIT — APPARTEMENT PRINCIPAL</div>
-      <div class="grid3">
-        ${champ('Type (F2 / F3 / F4 / Penthouse 4p / Penthouse 5p)')}
-        ${champ('Îlot')}
-        ${champ('Bâtiment')}
-        ${champ('Étage')}
-        ${champ('N° Appartement')}
-        ${champ('Surface (m²)')}
-      </div>
-
-      <div class="section-header">APPARTEMENTS SUPPLÉMENTAIRES <span style="font-weight:400;font-size:8pt;text-transform:none;letter-spacing:0">— à remplir uniquement si le client achète plusieurs appartements ou un immeuble entier (immeubles jumelés, ex. 30A + 30B)</span></div>
-      <table style="width:100%;border-collapse:collapse;font-size:9pt;margin-top:4px">
-        <thead><tr style="background:#f0f0f0">
-          <th style="border:1px solid #999;padding:4px">Îlot</th>
-          <th style="border:1px solid #999;padding:4px">Bâtiment</th>
-          <th style="border:1px solid #999;padding:4px">Étage</th>
-          <th style="border:1px solid #999;padding:4px">N° Appt</th>
-          <th style="border:1px solid #999;padding:4px">Type</th>
-          <th style="border:1px solid #999;padding:4px">Surface (m²)</th>
-        </tr></thead>
-        <tbody>
-          ${Array.from({length:6}).map(()=>`<tr>
-            <td style="border:1px solid #999;height:22px">&nbsp;</td>
-            <td style="border:1px solid #999">&nbsp;</td>
-            <td style="border:1px solid #999">&nbsp;</td>
-            <td style="border:1px solid #999">&nbsp;</td>
-            <td style="border:1px solid #999">&nbsp;</td>
-            <td style="border:1px solid #999">&nbsp;</td>
-          </tr>`).join('')}
-        </tbody>
-      </table>
-
-      <div class="section-header">MODALITÉS FINANCIÈRES</div>
-      <div class="grid3">
-        ${champ('Prix TOTAL du dossier — tous appartements confondus (F CFA)')}
-        ${champ('Frais de dossier (F CFA)')}
-        ${champ('Apport initial (F CFA)')}
-        ${champ('Mode de paiement')}
-        ${champ('Vague de livraison (1 / 2 / 3)')}
-        ${champ('Mode de livraison')}
-      </div>
-
-      <div class="section-header">OBSERVATIONS</div>
-      <div class="obs-box"></div>
-
-      <div class="sig-grid">
-        <div class="sig-box">Signature du client<div class="sig-line">Date : ……………………</div></div>
-        <div class="sig-box">Signature du commercial<div class="sig-line">Date : ……………………</div></div>
-      </div>
+  const p3 = `<div class="pg">${HD}<div class="ct">
+    ${SEC(3,'CONDITIONS DE RÈGLEMENT')}
+    <div class="row"><span class="l" style="width:62mm;white-space:normal;line-height:1.25">Apport initial : 20 % du coût du logement (offre exceptionnelle : F2${NV}10${NV}000${NV}000 – F3${NV}15${NV}000${NV}000 – F4${NV}20${NV}000${NV}000${NV}F${NV}CFA)</span><span class="v"></span><span class="l">F CFA</span></div>
+    <div class="tot"><span>RESTE À PAYER</span><span class="v"></span><span>F CFA</span></div>
+    ${SEC(4,'ÉCHÉANCIER DE PAIEMENT')}
+    <div class="note" style="text-align:left;margin-bottom:2mm">Veuillez préciser la date et le montant de chaque versement. Le nombre d’échéances correspond à la vague de livraison choisie (24, 36 ou 48 mois) ; au-delà de 24 versements, joindre l’échéancier détaillé en annexe, signé par les deux parties.</div>
+    <div class="cols"><div>${tab(1,6)}</div><div>${tab(7,12)}</div></div>
+    ${SEC(5,'VAGUE DE LIVRAISON')}
+    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>1ère livraison — 24 mois</span><span class="v"></span></div>
+    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>2ème livraison — 36 mois</span><span class="v"></span></div>
+    <div class="row"><span class="l" style="width:52mm;font-weight:700;color:#343B58"><span class="ck"></span>3ème livraison — 48 mois</span><span class="v"></span></div>
+    <div class="nb"><b class="o">NB :</b> l’acquéreur s’engage au strict respect de son échéancier de paiement. À défaut, BÂTIR S.A. se réserve le droit d’appliquer une <b>pénalité de retard de 5 % TTC</b> sur le montant de chaque échéance en retard. En signant ci-dessous, le souscripteur déclare avoir pris connaissance des conditions d’adhésion figurant dans la présente fiche et les accepter.</div>
+    <div class="fait">Fait à San-Pédro, le <i>……………………………………</i></div>
+    <div class="sg">
+      <div><div class="sigt">LE SOUSCRIPTEUR</div><div class="sigs">Signature précédée de la mention « Lu et approuvé »</div><div class="sigb"></div></div>
+      <div><div class="sigt">LA DIRECTION COMMERCIALE</div><div class="sigs">Signature et cachet</div><div class="sigb"></div></div>
     </div>
+  </div>${FT}</div>`;
 
-    <div class="footer-bar">
-      Siège Social : Cocody Riviera-Attoban ESPACE KAYLA 1<sup>er</sup> Etage, Appartement n°2 – 06 BP 1975 Abidjan 06
-      &nbsp;·&nbsp; Tél. : +225 27 22 43 67 24 / 22 43 75 53
-      &nbsp;·&nbsp; www.batir-sa.com &nbsp;·&nbsp; flash@batir-sa.com
-      &nbsp;·&nbsp; Édité le ${dateEdit}
-    </div>
-  </div>
-  </body></html>`;
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><title>Dossier de souscription — Cité Sainte-Élisabeth</title><style>${css}</style></head><body>${p1}${p2}${p3}</body></html>`;
 
   _pdfHtml = html;
   ouvrirPDF();
-  toast('✅ Fiche terrain prête — ouverture automatique...','success');
+  toast('✅ Dossier de souscription prêt — ouverture automatique...','success');
 }
 
 function ouvrirPDF(){
